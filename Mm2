@@ -1,0 +1,567 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local Player = Players.LocalPlayer
+local Mouse = Player:GetMouse()
+
+getgenv().MM2ESP_Connections = getgenv().MM2ESP_Connections or {}
+getgenv().MM2ESP_Tracers = getgenv().MM2ESP_Tracers or {}
+
+-- สร้าง ScreenGui สำหรับแจ้งเตือนและ UI หลัก
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MM2ESPUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+getgenv().MM2ESP_Gui = ScreenGui
+
+-- ข้อความแจ้งเตือนตอนเริ่มต้น (ตัวหนังสือใหญ่ ชัดเจน ไม่เรืองแสง ไม่มี UIStroke แสบตา)
+local NotifyLabel = Instance.new("TextLabel")
+NotifyLabel.Size = UDim2.new(0, 450, 0, 90)
+NotifyLabel.Position = UDim2.new(0.5, -225, 0.4, -45)
+NotifyLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+NotifyLabel.BorderSizePixel = 0
+NotifyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+NotifyLabel.Font = Enum.Font.GothamBold
+NotifyLabel.TextSize = 22
+NotifyLabel.Text = "กำลังโหลด"
+NotifyLabel.Parent = ScreenGui
+
+local NotifyCorner = Instance.new("UICorner")
+NotifyCorner.CornerRadius = UDim.new(0, 12)
+NotifyCorner.Parent = NotifyLabel
+
+-- ประกาศตัวแปร MainFrame ล่วงหน้า
+local MainFrame, OpenBtn
+
+-- อนิเมชั่นจุด " . . ." วิ่งไปเรื่อยๆ เป็นเวลา 2 วินาที
+local loadingActive = true
+task.spawn(function()
+	local dots = {"", ".", ". .", ". . ."}
+	local i = 1
+	while loadingActive do
+		NotifyLabel.Text = "กำลังโหลด" .. dots[i]
+		i = i % #dots + 1
+		task.wait(0.4)
+	end
+end)
+
+-- หลังจาก 2 วินาที หยุดอนิเมชั่น เปลี่ยนข้อความเป้นคัดลอกลิงก์ดิสคอร์ดเสร็จแล้ว และเปิดเมนู
+task.delay(2, function()
+	loadingActive = false
+	if NotifyLabel and NotifyLabel.Parent then
+		NotifyLabel.Text = "คัดลอกดิสคอร์ดเสร็จแล้ว!"
+		NotifyLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+		
+		pcall(function()
+			setclipboard("https://discord.gg/bvZ3aGHcW")
+		end)
+		
+		task.delay(1.2, function()
+			if NotifyLabel and NotifyLabel.Parent then
+				NotifyLabel:Destroy()
+			end
+			-- แสดงเมนูหลักขึ้นมา
+			if MainFrame then
+				MainFrame.Visible = true
+			end
+		end)
+	end
+end)
+
+-- Main Frame (หน้าต่างหลัก) - ซ่อนไว้ก่อนในช่วงแรก
+MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(255, 255, 255)
+MainStroke.Thickness = 1.5
+MainStroke.Parent = MainFrame
+
+-- TopBar (แถบหัวข้อสำหรับลากหน้าต่างหลัก)
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 35)
+TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 10)
+TopCorner.Parent = TopBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -40, 1, 0)
+TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "ESP & เครื่องมือ / วาป"
+TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 13
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TopBar
+
+-- ปุ่มพับเก็บ (-)
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+MinimizeBtn.Position = UDim2.new(1, -30, 0.5, -12.5)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.new(1, 1, 1)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.TextSize = 16
+MinimizeBtn.Parent = TopBar
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 6)
+MinCorner.Parent = MinimizeBtn
+
+-- ปุ่มเปิดหน้าต่างคืน (ไอคอน D) - รองรับการลากย้ายตำแหน่งได้
+OpenBtn = Instance.new("TextButton")
+OpenBtn.Size = UDim2.new(0, 45, 0, 45)
+OpenBtn.Position = UDim2.new(0, 50, 0, 50)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+OpenBtn.Text = "D"
+OpenBtn.TextColor3 = Color3.new(1, 1, 1)
+OpenBtn.Font = Enum.Font.GothamBold
+OpenBtn.TextSize = 20
+OpenBtn.Visible = false
+OpenBtn.Parent = ScreenGui
+
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(1, 0)
+OpenCorner.Parent = OpenBtn
+
+local OpenStroke = Instance.new("UIStroke")
+OpenStroke.Color = Color3.fromRGB(100, 100, 100)
+OpenStroke.Thickness = 1
+OpenStroke.Parent = OpenBtn
+
+-- ScrollingFrame (พื้นที่เลื่อนเนื้อหาข้างใน)
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Size = UDim2.new(1, -10, 1, -45)
+ScrollFrame.Position = UDim2.new(0, 5, 0, 40)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 570)
+ScrollFrame.ScrollBarThickness = 4
+ScrollFrame.Parent = MainFrame
+
+-- ฟังก์ชันสร้างปุ่มเปิด/ปิด
+local function CreateToggle(name, posY)
+	local ToggleBtn = Instance.new("TextButton")
+	ToggleBtn.Size = UDim2.new(1, -15, 0, 35)
+	ToggleBtn.Position = UDim2.new(0, 5, 0, posY)
+	ToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	ToggleBtn.Text = name .. ": ปิด"
+	ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+	ToggleBtn.Font = Enum.Font.GothamBold
+	ToggleBtn.TextSize = 12
+	ToggleBtn.Parent = ScrollFrame
+
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0, 8)
+	Corner.Parent = ToggleBtn
+
+	local state = false
+	ToggleBtn.MouseButton1Click:Connect(function()
+		state = not state
+		if state then
+			ToggleBtn.Text = name .. ": เปิด"
+			ToggleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+			ToggleBtn.BackgroundColor3 = Color3.fromRGB(25, 50, 25)
+		else
+			ToggleBtn.Text = name .. ": ปิด"
+			ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+			ToggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+		end
+	end)
+	
+	return ToggleBtn, function() return state end
+end
+
+-- สร้างองค์ประกอบภายใน ScrollFrame
+local KnifeBtn, GetKnifeState = CreateToggle("ESP คนถือมีด (แดง)", 5)
+local GunBtn, GetGunState = CreateToggle("ESP คนถือปืน (ฟ้า)", 45)
+local InnocentBtn, GetInnocentState = CreateToggle("ESP คนธรรมดา (เขียว)", 85)
+local BoxTracerBtn, GetBoxTracerState = CreateToggle("ESP กรอบสี่เหลี่ยม+เส้น", 125)
+
+local SectionLabel = Instance.new("TextLabel")
+SectionLabel.Size = UDim2.new(1, -15, 0, 25)
+SectionLabel.Position = UDim2.new(0, 5, 0, 165)
+SectionLabel.BackgroundTransparency = 1
+SectionLabel.Text = "--- เครื่องมือ / วาป ---"
+SectionLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+SectionLabel.Font = Enum.Font.GothamBold
+SectionLabel.TextSize = 12
+SectionLabel.Parent = ScrollFrame
+
+local WarpToggleBtn, GetWarpToggleState = CreateToggle("รับไอเท็ม วาป", 195)
+
+local GetToolBtn = Instance.new("TextButton")
+GetToolBtn.Size = UDim2.new(1, -15, 0, 35)
+GetToolBtn.Position = UDim2.new(0, 5, 0, 235)
+GetToolBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+GetToolBtn.Text = "กดรับไอเท็ม 'วาป' เข้ากระเป๋า"
+GetToolBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GetToolBtn.Font = Enum.Font.GothamBold
+GetToolBtn.TextSize = 12
+GetToolBtn.Parent = ScrollFrame
+
+local GetToolCorner = Instance.new("UICorner")
+GetToolCorner.CornerRadius = UDim.new(0, 8)
+GetToolCorner.Parent = GetToolBtn
+
+GetToolBtn.MouseButton1Click:Connect(function()
+	local backpack = Player:FindFirstChild("Backpack")
+	local character = Player.Character
+	if not backpack or not character then return end
+	
+	if backpack:FindFirstChild("วาป") or (character and character:FindFirstChild("วาป")) then
+		return
+	end
+	
+	local tool = Instance.new("Tool")
+	tool.Name = "วาป"
+	tool.RequiresHandle = false
+	
+	tool.Activated:Connect(function()
+		if GetWarpToggleState() and Mouse.Hit then
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				hrp.CFrame = Mouse.Hit + Vector3.new(0, 3, 0)
+			end
+		end
+	end)
+	
+	tool.Parent = backpack
+end)
+
+local function CreateTextBox(title, defaultVal, posY)
+	local Label = Instance.new("TextLabel")
+	Label.Size = UDim2.new(1, -15, 0, 18)
+	Label.Position = UDim2.new(0, 5, 0, posY)
+	Label.BackgroundTransparency = 1
+	Label.Text = title
+	Label.TextColor3 = Color3.fromRGB(200, 200, 200)
+	Label.Font = Enum.Font.GothamBold
+	Label.TextSize = 11
+	Label.TextXAlignment = Enum.TextXAlignment.Left
+	Label.Parent = ScrollFrame
+	
+	local Box = Instance.new("TextBox")
+	Box.Size = UDim2.new(1, -15, 0, 28)
+	Box.Position = UDim2.new(0, 5, 0, posY + 18)
+	Box.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	Box.Text = tostring(defaultVal)
+	Box.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Box.Font = Enum.Font.GothamBold
+	Box.TextSize = 12
+	Box.ClearTextOnFocus = false
+	Box.Parent = ScrollFrame
+	
+	local Corner = Instance.new("UICorner")
+	Corner.CornerRadius = UDim.new(0, 6)
+	Corner.Parent = Box
+	
+	return Box
+end
+
+local WalkSpeedBox = CreateTextBox("ความเร็วในการวิ่ง (1-200):", "16", 275)
+local JumpPowerBox = CreateTextBox("พลังกระโดด (1-100):", "50", 323)
+
+local InfiniteJumpBtn, GetInfiniteJumpState = CreateToggle("กระโดดไม่จำกัด (Infinite Jump)", 373)
+local FlyBtn, GetFlyState = CreateToggle("สวิตช์ลอยตัว (Fly)", 413)
+local NoclipBtn, GetNoclipState = CreateToggle("ทะลุกำแพง (Noclip)", 453)
+
+-- ระบบลากหน้าต่างหลัก (Draggable)
+local draggingMain, dragStartMain, startPosMain
+table.insert(getgenv().MM2ESP_Connections, TopBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		draggingMain = true
+		dragStartMain = input.Position
+		startPosMain = MainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				draggingMain = false
+			end
+		end)
+	end
+end))
+
+table.insert(getgenv().MM2ESP_Connections, UserInputService.InputChanged:Connect(function(input)
+	if draggingMain and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStartMain
+		MainFrame.Position = UDim2.new(startPosMain.X.Scale, startPosMain.X.Offset + delta.X, startPosMain.Y.Scale, startPosMain.Y.Offset + delta.Y)
+	end
+end))
+
+-- ระบบลากไอคอนปุ่มเปิด (OpenBtn Draggable)
+local draggingOpen, dragStartOpen, startPosOpen
+table.insert(getgenv().MM2ESP_Connections, OpenBtn.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		draggingOpen = true
+		dragStartOpen = input.Position
+		startPosOpen = OpenBtn.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				draggingOpen = false
+			end
+		end)
+	end
+end))
+
+table.insert(getgenv().MM2ESP_Connections, UserInputService.InputChanged:Connect(function(input)
+	if draggingOpen and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStartOpen
+		OpenBtn.Position = UDim2.new(startPosOpen.X.Scale, startPosOpen.X.Offset + delta.X, startPosOpen.Y.Scale, startPosOpen.Y.Offset + delta.Y)
+	end
+end))
+
+-- ระบบกระโดดไม่จำกัด
+UserInputService.JumpRequest:Connect(function()
+	if GetInfiniteJumpState() then
+		local character = Player.Character
+		if character then
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end
+	end
+end)
+
+-- ระบบควบคุมความเร็ว, กระโดด, การบิน (Fly) และ ทะลุกำแพง (Noclip)
+local bg, bv
+table.insert(getgenv().MM2ESP_Connections, RunService.RenderStepped:Connect(function()
+	local char = Player.Character
+	if char then
+		local humanoid = char:FindFirstChildOfClass("Humanoid")
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		
+		if humanoid and hrp then
+			if GetNoclipState() then
+				for _, part in pairs(char:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = false
+					end
+				end
+			end
+
+			local speedVal = tonumber(WalkSpeedBox.Text)
+			if speedVal then
+				speedVal = math.clamp(speedVal, 1, 200)
+				humanoid.WalkSpeed = speedVal
+			end
+			
+			local jumpVal = tonumber(JumpPowerBox.Text)
+			if jumpVal then
+				jumpVal = math.clamp(jumpVal, 1, 100)
+				if humanoid.UseJumpPower then
+					humanoid.JumpPower = jumpVal
+				else
+					humanoid.JumpHeight = jumpVal / 3
+				end
+			end
+			
+			if GetFlyState() then
+				if not hrp:FindFirstChild("MM2_FlyBodyGyro") then
+					bg = Instance.new("BodyGyro")
+					bg.Name = "MM2_FlyBodyGyro"
+					bg.P = 9e4
+					bg.MaxTorque = Vector3.new(9e4, 9e4, 9e4)
+					bg.CFrame = hrp.CFrame
+					bg.Parent = hrp
+				end
+				if not hrp:FindFirstChild("MM2_FlyBodyVelocity") then
+					bv = Instance.new("BodyVelocity")
+					bv.Velocity = Vector3.new(0, 0, 0)
+					bv.Name = "MM2_FlyBodyVelocity"
+					bv.MaxForce = Vector3.new(9e4, 9e4, 9e4)
+					bv.Parent = hrp
+				end
+				
+				humanoid.PlatformStand = true
+				
+				local direction = Vector3.new()
+				if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+					direction = direction + Camera.CoordinateFrame.LookVector
+				end
+				if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+					direction = direction - Camera.CoordinateFrame.LookVector
+				end
+				if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+					direction = direction - Camera.CoordinateFrame.RightVector
+				end
+				if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+					direction = direction + Camera.CoordinateFrame.RightVector
+				end
+				if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+					direction = direction + Vector3.new(0, 1, 0)
+				end
+				if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+					direction = direction - Vector3.new(0, 1, 0)
+				end
+				
+				if direction.Magnitude > 0 then
+					bv.Velocity = direction.Unit * 50
+				else
+					bv.Velocity = Vector3.new(0, 0.1, 0)
+				end
+				bg.CFrame = Camera.CoordinateFrame
+			else
+				if hrp:FindFirstChild("MM2_FlyBodyGyro") then hrp.MM2_FlyBodyGyro:Destroy() end
+				if hrp:FindFirstChild("MM2_FlyBodyVelocity") then hrp.MM2_FlyBodyVelocity:Destroy() end
+			end
+		end
+	end
+end))
+
+MinimizeBtn.MouseButton1Click:Connect(function()
+	MainFrame.Visible = false
+	OpenBtn.Visible = true
+end)
+
+OpenBtn.MouseButton1Click:Connect(function()
+	MainFrame.Visible = true
+	OpenBtn.Visible = false
+end)
+
+local function GetWeaponType(character, backpack)
+	local function scan(container)
+		for _, item in pairs(container:GetChildren()) do
+			if item:IsA("Tool") then
+				local name = string.lower(item.Name)
+				if string.find(name, "knife") or string.find(name, "sword") or string.find(name, "dagger") or string.find(name, "blade") or string.find(name, "มีด") then
+					return "Knife"
+				elseif string.find(name, "gun") or string.find(name, "pistol") or string.find(name, "revolver") or string.find(name, "ปืน") then
+					return "Gun"
+				end
+			end
+		end
+		return nil
+	end
+	
+	local w = scan(character)
+	if w then return w end
+	if backpack then
+		w = scan(backpack)
+		if w then return w end
+	end
+	return "Innocent"
+end
+
+local function RemoveTracer(p)
+	if getgenv().MM2ESP_Tracers[p] then
+		pcall(function()
+			getgenv().MM2ESP_Tracers[p]:Remove()
+		end)
+		getgenv().MM2ESP_Tracers[p] = nil
+	end
+end
+
+table.insert(getgenv().MM2ESP_Connections, RunService.RenderStepped:Connect(function()
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			local char = p.Character
+			local hrp = char.HumanoidRootPart
+			local wType = GetWeaponType(char, p:FindFirstChild("Backpack"))
+			
+			local knifeHigh = char:FindFirstChild("MM2_KnifeESP")
+			local gunHigh = char:FindFirstChild("MM2_GunESP")
+			local innocentHigh = char:FindFirstChild("MM2_InnocentESP")
+			local boxHigh = char:FindFirstChild("MM2_BoxESP")
+			
+			if GetKnifeState() and wType == "Knife" then
+				if not knifeHigh then
+					knifeHigh = Instance.new("Highlight")
+					knifeHigh.Name = "MM2_KnifeESP"
+					knifeHigh.Adornee = char
+					knifeHigh.FillColor = Color3.fromRGB(255, 0, 0)
+					knifeHigh.OutlineColor = Color3.fromRGB(255, 255, 255)
+					knifeHigh.FillTransparency = 0.5
+					knifeHigh.Parent = char
+				end
+			else
+				if knifeHigh then knifeHigh:Destroy() end
+			end
+			
+			if GetGunState() and wType == "Gun" then
+				if not gunHigh then
+					gunHigh = Instance.new("Highlight")
+					gunHigh.Name = "MM2_GunESP"
+					gunHigh.Adornee = char
+					gunHigh.FillColor = Color3.fromRGB(0, 150, 255)
+					gunHigh.OutlineColor = Color3.fromRGB(255, 255, 255)
+					gunHigh.FillTransparency = 0.5
+					gunHigh.Parent = char
+				end
+			else
+				if gunHigh then gunHigh:Destroy() end
+			end
+			
+			if GetInnocentState() and wType == "Innocent" then
+				if not innocentHigh then
+					innocentHigh = Instance.new("Highlight")
+					innocentHigh.Name = "MM2_InnocentESP"
+					innocentHigh.Adornee = char
+					innocentHigh.FillColor = Color3.fromRGB(0, 255, 0)
+					innocentHigh.OutlineColor = Color3.fromRGB(255, 255, 255)
+					innocentHigh.FillTransparency = 0.5
+					innocentHigh.Parent = char
+				end
+			else
+				if innocentHigh then innocentHigh:Destroy() end
+			end
+			
+			if GetBoxTracerState() then
+				if not boxHigh then
+					boxHigh = Instance.new("Highlight")
+					boxHigh.Name = "MM2_BoxESP"
+					boxHigh.Adornee = char
+					boxHigh.FillTransparency = 1
+					boxHigh.OutlineColor = Color3.fromRGB(255, 255, 255)
+					boxHigh.OutlineTransparency = 0
+					boxHigh.Parent = char
+				end
+				
+				local vector, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+				if onScreen then
+					if not getgenv().MM2ESP_Tracers[p] then
+						local line = Drawing.new("Line")
+						line.Visible = true
+						line.Color = Color3.fromRGB(255, 255, 255)
+						line.Thickness = 1.5
+						line.Transparency = 1
+						getgenv().MM2ESP_Tracers[p] = line
+					end
+					getgenv().MM2ESP_Tracers[p].From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+					getgenv().MM2ESP_Tracers[p].To = Vector2.new(vector.X, vector.Y)
+					getgenv().MM2ESP_Tracers[p].Visible = true
+				else
+					if getgenv().MM2ESP_Tracers[p] then getgenv().MM2ESP_Tracers[p].Visible = false end
+				end
+			else
+				if boxHigh then boxHigh:Destroy() end
+				RemoveTracer(p)
+			end
+		else
+			local char = p.Character
+			if char then
+				if char:FindFirstChild("MM2_KnifeESP") then char.MM2_KnifeESP:Destroy() end
+				if char:FindFirstChild("MM2_GunESP") then char.MM2_GunESP:Destroy() end
+				if char:FindFirstChild("MM2_InnocentESP") then char.MM2_InnocentESP:Destroy() end
+				if char:FindFirstChild("MM2_BoxESP") then char.MM2_BoxESP:Destroy() end
+			end
+			RemoveTracer(p)
+		end
+	end
+end))
