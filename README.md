@@ -769,7 +769,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อสินค้า (รองรับการส่งค่าผ่าน unpack แบบเดียวกับตัวอย่างของคุณ)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อสินค้า (ใช้ unpack args ตามที่คุณต้องการ)
 local function buyItemSmart(candidates)
     local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") 
         or ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
@@ -833,7 +833,7 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
--- รายชื่อเมล็ดพันธุ์
+-- รายชื่อเมล็ดพันธุ์ทั้งหมด
 local seedList = {
     {key = "Carrot", label = "Carrot (แครอท)", candidates = {"Carrot", "CarrotSeed", "Carrot Seed"}},
     {key = "Miki", label = "Miki Seed", candidates = {"Miki", "MikiSeed", "Miki Seed"}},
@@ -1091,7 +1091,7 @@ end
 
 createCategoryButton("เมนูหลัก")
 createCategoryButton("ช่วยเล่น")
-createCategoryButton("อоโต้")
+createCategoryButton("ออโต้")
 createCategoryButton("ขั้นต่ำน้ำหนัก")
 
 switchTab("เมนูหลัก")
