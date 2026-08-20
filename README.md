@@ -338,7 +338,7 @@ local function createToggle(parent, titleText, callback)
     }
 end
 
--- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลข (ตัวหนังสือสีขาว อ่านง่าย)
+-- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลข
 local function createNumberInput(parent, titleText, defaultVal, callback, unitText)
     unitText = unitText or ""
     local RowFrame = Instance.new("Frame")
@@ -507,7 +507,7 @@ createNumberInput(MainMenuContainer, "ความเร็วซื้อเม
     buyDelay = math.clamp(val, 0.01, 1.0)
 end, "s")
 
--- --- เพิ่มส่วน: ปรับแต่งตัวละคร (WalkSpeed, JumpPower, Inf Jump) ---
+-- --- ส่วนปรับแต่งตัวละคร ---
 local PlayerHeader = Instance.new("TextLabel")
 PlayerHeader.Size = UDim2.new(0.92, 0, 0, 16)
 PlayerHeader.BackgroundTransparency = 1
@@ -537,7 +537,7 @@ createToggle(MainMenuContainer, "กระโดดไม่จำกัด (Inf
     infJumpEnabled = state
 end)
 
--- Loop คอยอัปเดตค่าตัวละครเสมอไม่ให้เกมรีเซ็ตกลับ
+-- Loop อัปเดตค่าตัวละคร
 task.spawn(function()
     while task.wait(0.1) do
         if LocalPlayer.Character then
@@ -555,7 +555,6 @@ task.spawn(function()
     end
 end)
 
--- ระบบกระโดดไม่จำกัด (Air Jump)
 UserInputService.JumpRequest:Connect(function()
     if infJumpEnabled and LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -762,6 +761,22 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
+-- Helper: ฟังก์ชันส่งคำสั่งซื้อไอเทมแบบ Smart Retry (รองรับชื่อหลายรูปแบบ)
+local function buyItemSmart(candidates)
+    local requestRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
+    if not requestRemote then return end
+
+    for _, itemName in ipairs(candidates) do
+        pcall(function()
+            if requestRemote:IsA("RemoteFunction") then
+                requestRemote:InvokeServer(itemName)
+            elseif requestRemote:IsA("RemoteEvent") then
+                requestRemote:FireServer(itemName)
+            end
+        end)
+    end
+end
+
 -- 3. หมวด "ออโต้" (ซื้อเมล็ดพันธุ์ + ซื้อเกียร์อัตโนมัติ)
 local AutoContainer = createContainer("ออโต้")
 
@@ -776,12 +791,16 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
     if autoBuyEnabled then
         task.spawn(function()
             while autoBuyEnabled do
-                for seedName, isSelected in pairs(selectedSeeds) do
+                for seedDataKey, isSelected in pairs(selectedSeeds) do
                     if not autoBuyEnabled then break end
                     if isSelected then
-                        pcall(function()
-                            ReplicatedStorage:WaitForChild("RequestPurchase"):InvokeServer(seedName)
-                        end)
+                        -- ดึงลิสต์ชื่อที่เป็นไปได้เพื่อยิงสั่งซื้อ
+                        for _, seedData in ipairs(seedList) do
+                            if seedData.key == seedDataKey then
+                                buyItemSmart(seedData.candidates)
+                                break
+                            end
+                        end
                     end
                 end
                 task.wait(buyDelay)
@@ -799,31 +818,34 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
+-- รายชื่อเมล็ดพันธุ์พร้อมชุดชื่อ candidate ป้องกันเกมสะกดไม่เหมือนกัน
 local seedList = {
-    {name = "Carrot", label = "Carrot (แครอท)"},
-    {name = "Miki", label = "Miki Seed"},
-    {name = "MedTrad", label = "MedTrad Seed"},
-    {name = "EmoeHair", label = "EmoeHair Seed"},
-    {name = "Siw", label = "Siw Seed"},
-    {name = "Nom", label = "Nom Seed"},
-    {name = "Car", label = "Car (รถยนต์)"},
-    {name = "House", label = "House (บ้าน)"},
-    {name = "MysteryRocket", label = "MysteryRocket Seed"},
-    {name = "MysteryStick", label = "MysteryStick Seed"},
-    {name = "Bamboo", label = "Bamboo (ไม้ไผ่)"},
-    {name = "Eggkapok", label = "Eggkapok Seed"},
-    {name = "MrGreed", label = "MrGreed Seed"},
-    {name = "OldMhoy", label = "OldMhoy Seed"},
-    {name = "YoungMhoy", label = "YoungMhoy Seed"},
-    {name = "Ong", label = "Ong Seed"},
-    {name = "Budha", label = "Budha Seed"},
-    {name = "NorTad", label = "NorTad Seed"},
-    {name = "RobuxTree", label = "RobuxTree"},
-    {name = "Glaed", label = "Glaed (เกล็ด)"},
-    {name = "GoldFlower", label = "GoldFlower (ดอกไม้ทองคำ)"},
-    {name = "Kee", label = "Kee Seed"},
-    {name = "PCX150", label = "PCX150 Seed"},
-    {name = "MysteryStickTree", label = "MysteryStickTree Seed"}
+    {key = "Carrot", label = "Carrot (แครอท)", candidates = {"Carrot", "CarrotSeed", "Carrot Seed"}},
+    {key = "Miki", label = "Miki Seed", candidates = {"Miki", "MikiSeed", "Miki Seed"}},
+    {key = "MedTrad", label = "MedTrad Seed", candidates = {"MedTrad", "MedTradSeed", "MedTrad Seed"}},
+    {key = "EmoeHair", label = "EmoeHair Seed", candidates = {"EmoeHair", "EmoeHairSeed", "EmoeHair Seed"}},
+    {key = "Siw", label = "Siw Seed", candidates = {"Siw", "SiwSeed", "Siw Seed"}},
+    {key = "Nom", label = "Nom Seed", candidates = {"Nom", "NomSeed", "Nom Seed"}},
+    {key = "Car", label = "Car (รถยนต์)", candidates = {"Car", "CarSeed", "Car Seed"}},
+    {key = "House", label = "House (บ้าน)", candidates = {"House", "HouseSeed", "House Seed"}},
+    {key = "MysteryRocket", label = "MysteryRocket Seed", candidates = {"MysteryRocket", "MysteryRocketSeed", "MysteryRocket Seed"}},
+    {key = "MysteryStick", label = "MysteryStick Seed", candidates = {"MysteryStick", "MysteryStickSeed", "MysteryStick Seed"}},
+    {key = "Bamboo", label = "Bamboo (ไม้ไผ่)", candidates = {"Bamboo", "BambooSeed", "Bamboo Seed"}},
+    {key = "Eggkapok", label = "Eggkapok Seed", candidates = {"Eggkapok", "EggkapokSeed", "Eggkapok Seed"}},
+    {key = "MrGreed", label = "MrGreed Seed", candidates = {"MrGreed", "MrGreedSeed", "MrGreed Seed"}},
+    {key = "OldMhoy", label = "OldMhoy Seed", candidates = {"OldMhoy", "OldMhoySeed", "OldMhoy Seed"}},
+    {key = "OldMhoyHair", label = "OldMhoyHair Seed (น้ำ)", candidates = {"OldMhoyHair", "OldMhoyHairSeed", "OldMhoyWaterSeed", "OldMhoyWater Seed"}},
+    {key = "YoungMhoy", label = "YoungMhoy Seed", candidates = {"YoungMhoy", "YoungMhoySeed", "YoungMhoy Seed"}},
+    {key = "YoungMhoyHair", label = "YoungMhoyHair Seed (น้ำ)", candidates = {"YoungMhoyHair", "YoungMhoyHairSeed", "YoungMhoyWaterSeed", "YoungMhoyWater Seed"}},
+    {key = "Ong", label = "Ong Seed", candidates = {"Ong", "OngSeed", "Ong Seed"}},
+    {key = "Budha", label = "Budha Seed", candidates = {"Budha", "BudhaSeed", "Budha Seed"}},
+    {key = "NorTad", label = "NorTad Seed", candidates = {"NorTad", "NorTadSeed", "NorTadWaterSeed", "NorTad Seed"}},
+    {key = "RobuxTree", label = "RobuxTree", candidates = {"RobuxTree", "RobuxTreeSeed", "Robux Tree"}},
+    {key = "Glaed", label = "Glaed (เกล็ด)", candidates = {"Glaed", "GlaedSeed", "GlaedWaterSeed", "Glaed Water Seed"}},
+    {key = "GoldFlower", label = "GoldFlower (ดอกไม้ทองคำ)", candidates = {"GoldFlower", "GoldFlowerSeed", "GoldFlowerWaterSeed", "Gold Flower Seed"}},
+    {key = "Kee", label = "Kee Seed", candidates = {"Kee", "KeeSeed", "KeeWaterSeed", "Kee Water Seed"}},
+    {key = "PCX150", label = "PCX150 Seed", candidates = {"PCX150", "PCX150Seed", "PCX150 Seed"}},
+    {key = "MysteryStickTree", label = "MysteryStickTree Seed", candidates = {"MysteryStickTree", "MysteryStickTreeSeed", "MysteryStickTree Seed"}}
 }
 
 local buyAllSeedsToggleObj = nil
@@ -831,7 +853,7 @@ local buyAllSeedsToggleObj = nil
 local function checkAllSeedsState()
     local allOn = true
     for _, seedData in ipairs(seedList) do
-        if not selectedSeeds[seedData.name] then
+        if not selectedSeeds[seedData.key] then
             allOn = false
             break
         end
@@ -849,9 +871,9 @@ buyAllSeedsToggleObj = createToggle(AutoContainer, "ซื้อเมล็ด�
     isUpdatingAllSeeds = true
     
     for _, seedData in ipairs(seedList) do
-        selectedSeeds[seedData.name] = state
-        if seedToggles[seedData.name] then
-            seedToggles[seedData.name].SetState(state, false)
+        selectedSeeds[seedData.key] = state
+        if seedToggles[seedData.key] then
+            seedToggles[seedData.key].SetState(state, false)
         end
     end
     
@@ -859,17 +881,17 @@ buyAllSeedsToggleObj = createToggle(AutoContainer, "ซื้อเมล็ด�
 end)
 
 for _, seedData in ipairs(seedList) do
-    selectedSeeds[seedData.name] = false
+    selectedSeeds[seedData.key] = false
     local tObj = createToggle(AutoContainer, seedData.label, function(state)
-        selectedSeeds[seedData.name] = state
+        selectedSeeds[seedData.key] = state
         if not isUpdatingAllSeeds then
             checkAllSeedsState()
         end
     end)
-    seedToggles[seedData.name] = tObj
+    seedToggles[seedData.key] = tObj
 end
 
--- ==================== ส่วน: ซื้อเกียร์อัตโนมัติ (ครบ 4 รายการ) ====================
+-- ==================== ส่วน: ซื้อเกียร์อัตโนมัติ ====================
 local selectedGears = {}
 local gearToggles = {}
 local isUpdatingAllGears = false
@@ -884,18 +906,20 @@ SubTitleGears.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleGears.TextSize = 8
 SubTitleGears.Parent = AutoContainer
 
--- สวิตช์ซื้อเกียร์อัตโนมัติรวม
 createToggle(AutoContainer, "ซื้อเกียร์อัตโนมัติ", function(state)
     autoBuyGearsEnabled = state
     if autoBuyGearsEnabled then
         task.spawn(function()
             while autoBuyGearsEnabled do
-                for gearName, isSelected in pairs(selectedGears) do
+                for gearKey, isSelected in pairs(selectedGears) do
                     if not autoBuyGearsEnabled then break end
                     if isSelected then
-                        pcall(function()
-                            ReplicatedStorage:WaitForChild("RequestPurchase"):InvokeServer(gearName)
-                        end)
+                        for _, gearData in ipairs(gearList) do
+                            if gearData.key == gearKey then
+                                buyItemSmart(gearData.candidates)
+                                break
+                            end
+                        end
                     end
                 end
                 task.wait(buyDelay)
@@ -904,12 +928,11 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
     end
 end)
 
--- รายชื่อเกียร์ครบทั้ง 4 รายการ
 local gearList = {
-    {name = "PlantDestroyer", label = "อุปกรณ์กำจัดพืชผล"},
-    {name = "PlantMover", label = "Plant Mover Gear"},
-    {name = "FartGear", label = "Fart Gear (อุปกรณ์เร่ง)"},
-    {name = "SprayWater", label = "Water Spray (อุปกรณ์รดน้ำ)"}
+    {key = "PlantDestroyer", label = "อุปกรณ์กำจัดพืชผล", candidates = {"PlantDestroyer", "Plant Destroyer", "PlantDestroyerGear"}},
+    {key = "PlantMover", label = "Plant Mover Gear", candidates = {"PlantMover", "Plant Mover", "PlantMoverGear"}},
+    {key = "FartGear", label = "Fart Gear (อุปกรณ์เร่ง)", candidates = {"FartGear", "Fart Gear"}},
+    {key = "SprayWater", label = "Water Spray (อุปกรณ์รดน้ำ)", candidates = {"SprayWater", "Water Spray", "WaterSpray"}}
 }
 
 local buyAllGearsToggleObj = nil
@@ -917,7 +940,7 @@ local buyAllGearsToggleObj = nil
 local function checkAllGearsState()
     local allOn = true
     for _, gearData in ipairs(gearList) do
-        if not selectedGears[gearData.name] then
+        if not selectedGears[gearData.key] then
             allOn = false
             break
         end
@@ -935,9 +958,9 @@ buyAllGearsToggleObj = createToggle(AutoContainer, "ซื้อเกียร�
     isUpdatingAllGears = true
     
     for _, gearData in ipairs(gearList) do
-        selectedGears[gearData.name] = state
-        if gearToggles[gearData.name] then
-            gearToggles[gearData.name].SetState(state, false)
+        selectedGears[gearData.key] = state
+        if gearToggles[gearData.key] then
+            gearToggles[gearData.key].SetState(state, false)
         end
     end
     
@@ -945,14 +968,14 @@ buyAllGearsToggleObj = createToggle(AutoContainer, "ซื้อเกียร�
 end)
 
 for _, gearData in ipairs(gearList) do
-    selectedGears[gearData.name] = false
+    selectedGears[gearData.key] = false
     local tObj = createToggle(AutoContainer, gearData.label, function(state)
-        selectedGears[gearData.name] = state
+        selectedGears[gearData.key] = state
         if not isUpdatingAllGears then
             checkAllGearsState()
         end
     end)
-    gearToggles[gearData.name] = tObj
+    gearToggles[gearData.key] = tObj
 end
 
 -- 4. หมวด "ขั้นต่ำน้ำหนัก" (Weight Filter Settings)
@@ -979,7 +1002,7 @@ WeightSubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
 WeightSubTitle.TextSize = 8
 WeightSubTitle.Parent = WeightContainer
 
--- --- เพิ่มปุ่ม: เลือกผลไม้ทั้งหมด (Select All Weight Fruits) ---
+-- ปุ่ม: เลือกผลไม้ทั้งหมด
 local weightFruitToggles = {}
 local isUpdatingAllWeightFruits = false
 local selectAllWeightToggleObj = nil
@@ -987,7 +1010,7 @@ local selectAllWeightToggleObj = nil
 local function checkAllWeightFruitsState()
     local allOn = true
     for _, seedData in ipairs(seedList) do
-        if not selectedWeightFruits[seedData.name] then
+        if not selectedWeightFruits[seedData.key] then
             allOn = false
             break
         end
@@ -1005,9 +1028,9 @@ selectAllWeightToggleObj = createToggle(WeightContainer, "เลือกผล�
     isUpdatingAllWeightFruits = true
     
     for _, seedData in ipairs(seedList) do
-        selectedWeightFruits[seedData.name] = state
-        if weightFruitToggles[seedData.name] then
-            weightFruitToggles[seedData.name].SetState(state, false)
+        selectedWeightFruits[seedData.key] = state
+        if weightFruitToggles[seedData.key] then
+            weightFruitToggles[seedData.key].SetState(state, false)
         end
     end
     
@@ -1016,14 +1039,14 @@ end)
 
 -- รายการผลไม้สำหรับเลือกกรองน้ำหนัก
 for _, seedData in ipairs(seedList) do
-    selectedWeightFruits[seedData.name] = false
+    selectedWeightFruits[seedData.key] = false
     local tObj = createToggle(WeightContainer, seedData.label, function(state)
-        selectedWeightFruits[seedData.name] = state
+        selectedWeightFruits[seedData.key] = state
         if not isUpdatingAllWeightFruits then
             checkAllWeightFruitsState()
         end
     end)
-    weightFruitToggles[seedData.name] = tObj
+    weightFruitToggles[seedData.key] = tObj
 end
 
 -- ฟังก์ชันสลับหมวดหมู่
