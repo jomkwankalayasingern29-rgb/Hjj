@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -49,6 +50,11 @@ LoadText.Parent = LoadFrame
 local sellDelay = 0.1
 local harvestDelay = 0.1
 local buyDelay = 0.1
+
+-- ==================== ตัวแปรปรับแต่งตัวละคร ====================
+local customWalkSpeed = 16
+local customJumpPower = 50
+local infJumpEnabled = false
 
 -- ==================== ตัวแปรรักษาการกรองน้ำหนัก ====================
 local weightFilterEnabled = false
@@ -332,9 +338,9 @@ local function createToggle(parent, titleText, callback)
     }
 end
 
--- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลข (ปรับปรุงให้อ่านง่าย คมชัด ไม่เรืองแสง)
+-- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลข (ตัวหนังสือสีขาว อ่านง่าย)
 local function createNumberInput(parent, titleText, defaultVal, callback, unitText)
-    unitText = unitText or "s"
+    unitText = unitText or ""
     local RowFrame = Instance.new("Frame")
     RowFrame.Size = UDim2.new(0.92, 0, 0, 24)
     RowFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
@@ -368,7 +374,7 @@ local function createNumberInput(parent, titleText, defaultVal, callback, unitTe
     TextBox.BorderSizePixel = 0
     TextBox.Font = Enum.Font.GothamBold
     TextBox.Text = tostring(defaultVal) .. unitText
-    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255) -- เปลี่ยนเป็นสีขาวคมชัด อ่านง่าย ไม่สะท้อนเรืองแสง
+    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     TextBox.TextSize = 9
     TextBox.ClearTextOnFocus = false
     TextBox.Parent = RowFrame
@@ -479,12 +485,12 @@ DiscordBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ส่วนปรับความเร็ว
+-- --- ส่วนตั้งค่าความเร็วของระบบ ---
 local SpeedHeader = Instance.new("TextLabel")
 SpeedHeader.Size = UDim2.new(0.92, 0, 0, 16)
 SpeedHeader.BackgroundTransparency = 1
 SpeedHeader.Font = Enum.Font.GothamBold
-SpeedHeader.Text = "--- ตั้งค่าความเร็ว (0.01s - 1s) ---"
+SpeedHeader.Text = "--- ตั้งค่าความเร็วระบบ (0.01s - 1s) ---"
 SpeedHeader.TextColor3 = Color3.fromRGB(0, 162, 255)
 SpeedHeader.TextSize = 8
 SpeedHeader.Parent = MainMenuContainer
@@ -500,6 +506,64 @@ end, "s")
 createNumberInput(MainMenuContainer, "ความเร็วซื้อเมล็ด", 0.1, function(val)
     buyDelay = math.clamp(val, 0.01, 1.0)
 end, "s")
+
+-- --- เพิ่มส่วน: ปรับแต่งตัวละคร (WalkSpeed, JumpPower, Inf Jump) ---
+local PlayerHeader = Instance.new("TextLabel")
+PlayerHeader.Size = UDim2.new(0.92, 0, 0, 16)
+PlayerHeader.BackgroundTransparency = 1
+PlayerHeader.Font = Enum.Font.GothamBold
+PlayerHeader.Text = "--- ปรับแต่งตัวละคร ---"
+PlayerHeader.TextColor3 = Color3.fromRGB(0, 162, 255)
+PlayerHeader.TextSize = 8
+PlayerHeader.Parent = MainMenuContainer
+
+createNumberInput(MainMenuContainer, "ความเร็วเดิน (WalkSpeed)", 16, function(val)
+    customWalkSpeed = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = customWalkSpeed
+    end
+end, "")
+
+createNumberInput(MainMenuContainer, "แรงกระโดด (JumpPower)", 50, function(val)
+    customJumpPower = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        hum.UseJumpPower = true
+        hum.JumpPower = customJumpPower
+    end
+end, "")
+
+createToggle(MainMenuContainer, "กระโดดไม่จำกัด (Inf Jump)", function(state)
+    infJumpEnabled = state
+end)
+
+-- Loop คอยอัปเดตค่าตัวละครเสมอไม่ให้เกมรีเซ็ตกลับ
+task.spawn(function()
+    while task.wait(0.1) do
+        if LocalPlayer.Character then
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                if customWalkSpeed ~= 16 then
+                    hum.WalkSpeed = customWalkSpeed
+                end
+                if customJumpPower ~= 50 then
+                    hum.UseJumpPower = true
+                    hum.JumpPower = customJumpPower
+                end
+            end
+        end
+    end
+end)
+
+-- ระบบกระโดดไม่จำกัด (Air Jump)
+UserInputService.JumpRequest:Connect(function()
+    if infJumpEnabled and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
 
 -- 2. หมวด "ช่วยเล่น"
 local HelpPlayContainer = createContainer("ช่วยเล่น")
@@ -805,7 +869,7 @@ for _, seedData in ipairs(seedList) do
     seedToggles[seedData.name] = tObj
 end
 
--- ==================== เพิ่มส่วน: ซื้อเกียร์อัตโนมัติ ====================
+-- ==================== ส่วน: ซื้อเกียร์อัตโนมัติ (ครบ 4 รายการ) ====================
 local selectedGears = {}
 local gearToggles = {}
 local isUpdatingAllGears = false
@@ -840,10 +904,12 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
     end
 end)
 
--- รายชื่อเกียร์ภาษาอังกฤษจากรูปภาพ
+-- รายชื่อเกียร์ครบทั้ง 4 รายการ
 local gearList = {
     {name = "PlantDestroyer", label = "อุปกรณ์กำจัดพืชผล"},
-    {name = "PlantMover", label = "Plant Mover Gear"}
+    {name = "PlantMover", label = "Plant Mover Gear"},
+    {name = "FartGear", label = "Fart Gear (อุปกรณ์เร่ง)"},
+    {name = "SprayWater", label = "Water Spray (อุปกรณ์รดน้ำ)"}
 }
 
 local buyAllGearsToggleObj = nil
@@ -913,12 +979,51 @@ WeightSubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
 WeightSubTitle.TextSize = 8
 WeightSubTitle.Parent = WeightContainer
 
+-- --- เพิ่มปุ่ม: เลือกผลไม้ทั้งหมด (Select All Weight Fruits) ---
+local weightFruitToggles = {}
+local isUpdatingAllWeightFruits = false
+local selectAllWeightToggleObj = nil
+
+local function checkAllWeightFruitsState()
+    local allOn = true
+    for _, seedData in ipairs(seedList) do
+        if not selectedWeightFruits[seedData.name] then
+            allOn = false
+            break
+        end
+    end
+    
+    if selectAllWeightToggleObj then
+        isUpdatingAllWeightFruits = true
+        selectAllWeightToggleObj.SetState(allOn, false)
+        isUpdatingAllWeightFruits = false
+    end
+end
+
+selectAllWeightToggleObj = createToggle(WeightContainer, "เลือกผลไม้ทั้งหมด", function(state)
+    if isUpdatingAllWeightFruits then return end
+    isUpdatingAllWeightFruits = true
+    
+    for _, seedData in ipairs(seedList) do
+        selectedWeightFruits[seedData.name] = state
+        if weightFruitToggles[seedData.name] then
+            weightFruitToggles[seedData.name].SetState(state, false)
+        end
+    end
+    
+    isUpdatingAllWeightFruits = false
+end)
+
 -- รายการผลไม้สำหรับเลือกกรองน้ำหนัก
 for _, seedData in ipairs(seedList) do
     selectedWeightFruits[seedData.name] = false
-    createToggle(WeightContainer, seedData.label, function(state)
+    local tObj = createToggle(WeightContainer, seedData.label, function(state)
         selectedWeightFruits[seedData.name] = state
+        if not isUpdatingAllWeightFruits then
+            checkAllWeightFruitsState()
+        end
     end)
+    weightFruitToggles[seedData.name] = tObj
 end
 
 -- ฟังก์ชันสลับหมวดหมู่
