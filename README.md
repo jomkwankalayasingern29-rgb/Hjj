@@ -376,10 +376,50 @@ createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function
     end
 end)
 
--- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (0.01s ระยะ 50 Studs) ---
+-- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (คัดกรองเฉพาะผลไม้/พืชผล ระยะ 50 Studs) ---
 local autoHarvestEnabled = false
 
-createToggle(HelpPlayContainer, "เดินเก็บอัตโนมัติ", function(state)
+-- คำศัพท์สำหรับคัดกรองเฉพาะ "ผลไม้/พืชผล/การเก็บเกี่ยว"
+local fruitKeywords = {"fruit", "crop", "harvest", "pick", "เก็บ", "เก็บเกี่ยว", "ผลไม้", "ผล", "tree", "plant"}
+local ignoreKeywords = {"dirt", "plot", "farm", "grass", "baseplate", "ground", "floor", "terrain"}
+
+local function isFruitOrCrop(obj, prompt)
+    local objName = string.lower(obj.Name)
+    
+    -- ข้ามพาร์ทพื้นดิน/แปลงปลูก
+    for _, ignore in ipairs(ignoreKeywords) do
+        if string.find(objName, ignore) then
+            return false
+        end
+    end
+    
+    -- เช็คจากชื่อ Object
+    for _, kw in ipairs(fruitKeywords) do
+        if string.find(objName, kw) then
+            return true
+        end
+    end
+    
+    -- เช็คจาก ProximityPrompt
+    if prompt then
+        local actionText = string.lower(tostring(prompt.ActionText))
+        local objectText = string.lower(tostring(prompt.ObjectText))
+        for _, kw in ipairs(fruitKeywords) do
+            if string.find(actionText, kw) or string.find(objectText, kw) then
+                return true
+            end
+        end
+    end
+
+    -- หากวัตถุเป็นโมเดลต้นไม้/ผลไม้ทั่วไป
+    if obj:IsA("Model") or obj.Parent:IsA("Model") then
+        return true
+    end
+
+    return false
+end
+
+createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออโต้", function(state)
     autoHarvestEnabled = state
     if autoHarvestEnabled then
         task.spawn(function()
@@ -397,18 +437,22 @@ createToggle(HelpPlayContainer, "เดินเก็บอัตโนมั�
                     for _, part in ipairs(parts) do
                         if not autoHarvestEnabled then break end
                         
-                        if firetouchinterest then
-                            firetouchinterest(hrp, part, 0)
-                            firetouchinterest(hrp, part, 1)
-                        end
-                        
                         local prompt = part:FindFirstChildWhichIsA("ProximityPrompt") or (part.Parent and part.Parent:FindFirstChildWhichIsA("ProximityPrompt"))
-                        if prompt then
-                            if fireproximityprompt then
-                                fireproximityprompt(prompt)
-                            elseif prompt.InputHoldBegin then
-                                prompt:InputHoldBegin()
-                                prompt:InputHoldEnd()
+                        
+                        -- แตะเก็บเฉพาะวัตถุที่เป็นผลไม้/พืชผล
+                        if isFruitOrCrop(part, prompt) then
+                            if firetouchinterest then
+                                firetouchinterest(hrp, part, 0)
+                                firetouchinterest(hrp, part, 1)
+                            end
+                            
+                            if prompt then
+                                if fireproximityprompt then
+                                    fireproximityprompt(prompt)
+                                elseif prompt.InputHoldBegin then
+                                    prompt:InputHoldBegin()
+                                    prompt:InputHoldEnd()
+                                end
                             end
                         end
                     end
@@ -419,7 +463,7 @@ createToggle(HelpPlayContainer, "เดินเก็บอัตโนมั�
     end
 end)
 
--- 3. หมวดใหม่ "ออโต้" (ระบบซื้อเมล็ดอัตโนมัติ เลือกได้มากกว่า 1)
+-- 3. หมวด "ออโต้" (ระบบซื้อเมล็ดอัตโนมัติ เลือกได้มากกว่า 1)
 local AutoContainer = createContainer("ออโต้")
 
 local selectedSeeds = {}
@@ -455,7 +499,7 @@ SubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitle.TextSize = 8
 SubTitle.Parent = AutoContainer
 
--- รายชื่อเมล็ดภาษาอังกฤษทั้งหมดจากรูปภาพ
+-- รายชื่อเมล็ดภาษาอังกฤษทั้งหมดจากรูปภาพ (รวมทั้งหมด 24 ชนิด)
 local seedList = {
     {name = "Carrot", label = "Carrot (แครอท)"},
     {name = "Miki", label = "Miki Seed"},
@@ -475,7 +519,12 @@ local seedList = {
     {name = "Ong", label = "Ong Seed"},
     {name = "Budha", label = "Budha Seed"},
     {name = "NorTad", label = "NorTad Seed"},
-    {name = "RobuxTree", label = "RobuxTree"}
+    {name = "RobuxTree", label = "RobuxTree"},
+    {name = "Glaed", label = "Glaed (เกล็ด)"},
+    {name = "GoldFlower", label = "GoldFlower (ดอกไม้ทองคำ)"},
+    {name = "Kee", label = "Kee Seed"},
+    {name = "PCX150", label = "PCX150 Seed"},
+    {name = "MysteryStickTree", label = "MysteryStickTree Seed"}
 }
 
 -- สร้างสวิตช์เลือกซื้อเมล็ดแต่ละชนิด
