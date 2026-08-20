@@ -871,23 +871,24 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (แก้ไขให้รองรับ Remote ทั้งหมดยอดนิยมในเกมนี้)
 local function buyItemSmart(candidates)
-    local reqRemote = ReplicatedStorage:FindFirstChild("RequestGearPurchase") or ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
+    -- ค้นหา Remote ของเกียร์ก่อนเป็นอันดับแรก ถ้าไม่เจอค่อยหาของเมล็ด
+    local reqRemote = ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
+        or ReplicatedStorage:FindFirstChild("RequestPurchase") 
+        or ReplicatedStorage:FindFirstChild("PurchaseItem") 
+        or ReplicatedStorage:FindFirstChild("BuyItem")
+        
     if not reqRemote then return end
 
     for _, itemName in ipairs(candidates) do
-        local success = false
         pcall(function()
             if reqRemote:IsA("RemoteFunction") then
                 reqRemote:InvokeServer(itemName)
-                success = true
             elseif reqRemote:IsA("RemoteEvent") then
                 reqRemote:FireServer(itemName)
-                success = true
             end
         end)
-        if success then break end
     end
 end
 
@@ -1165,21 +1166,21 @@ end
 
 -- สร้างปุ่มเลือกหมวดหมู่ทางซ้าย
 local function createCategoryButton(name)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 22)
-    btn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-    btn.BorderSizePixel = 0
-    btn.Font = Enum.Font.GothamBold
-    btn.Text = name
-    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-    btn.TextSize = 9
-    btn.Parent = LeftSide
+    valBtn = Instance.new("TextButton")
+    valBtn.Size = UDim2.new(0.9, 0, 0, 22)
+    valBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    valBtn.BorderSizePixel = 0
+    valBtn.Font = Enum.Font.GothamBold
+    valBtn.Text = name
+    valBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    valBtn.TextSize = 9
+    valBtn.Parent = LeftSide
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 3)
-    corner.Parent = btn
+    corner.Parent = valBtn
 
-    btn.MouseButton1Click:Connect(function()
+    valBtn.MouseButton1Click:Connect(function()
         switchTab(name)
     end)
 end
@@ -1216,8 +1217,7 @@ task.spawn(function()
     MainFrame.Visible = true
     MainFrame.Size = UDim2.new(0, 260, 0, 140)
     
-    _G.TweenInfoInstance = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local expandTween = TweenService:Create(MainFrame, _G.TweenInfoInstance, {
+    local expandTween = TweenService:Create(MainFrame, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
         Size = UDim2.new(0, 360, 0, 220),
         BackgroundTransparency = 0
     })
