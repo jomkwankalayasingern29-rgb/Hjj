@@ -48,8 +48,8 @@ LoadText.Parent = LoadFrame
 -- ==================== หน้าต่าง UI หลัก ====================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 330, 0, 200)
-MainFrame.Position = UDim2.new(0.5, -165, 0.5, -100)
+MainFrame.Size = UDim2.new(0, 350, 0, 210)
+MainFrame.Position = UDim2.new(0.5, -175, 0.5, -105)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -139,10 +139,10 @@ MinimizeButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     if isMinimized then
         MinimizeButton.Text = "+"
-        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = UDim2.new(0, 330, 0, 24)}):Play()
+        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = UDim2.new(0, 350, 0, 24)}):Play()
     else
         MinimizeButton.Text = "-"
-        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = UDim2.new(0, 330, 0, 200)}):Play()
+        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = UDim2.new(0, 350, 0, 210)}):Play()
     end
 end)
 
@@ -218,7 +218,7 @@ end
 -- Helper: ฟังก์ชันสร้างสวิตช์ เปิด/ปิด (Toggle Component)
 local function createToggle(parent, titleText, callback)
     local RowFrame = Instance.new("Frame")
-    RowFrame.Size = UDim2.new(0.92, 0, 0, 26)
+    RowFrame.Size = UDim2.new(0.92, 0, 0, 24)
     RowFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     RowFrame.BorderSizePixel = 0
     RowFrame.Parent = parent
@@ -244,8 +244,8 @@ local function createToggle(parent, titleText, callback)
     RowLabel.Parent = RowFrame
 
     local ToggleBackground = Instance.new("TextButton")
-    ToggleBackground.Size = UDim2.new(0, 36, 0, 16)
-    ToggleBackground.Position = UDim2.new(1, -42, 0.5, -8)
+    ToggleBackground.Size = UDim2.new(0, 34, 0, 15)
+    ToggleBackground.Position = UDim2.new(1, -40, 0.5, -7.5)
     ToggleBackground.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     ToggleBackground.BorderSizePixel = 0
     ToggleBackground.Text = ""
@@ -257,8 +257,8 @@ local function createToggle(parent, titleText, callback)
     ToggleCorner.Parent = ToggleBackground
 
     local ToggleCircle = Instance.new("Frame")
-    ToggleCircle.Size = UDim2.new(0, 12, 0, 12)
-    ToggleCircle.Position = UDim2.new(0, 2, 0.5, -6)
+    ToggleCircle.Size = UDim2.new(0, 11, 0, 11)
+    ToggleCircle.Position = UDim2.new(0, 2, 0.5, -5.5)
     ToggleCircle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
     ToggleCircle.BorderSizePixel = 0
     ToggleCircle.Parent = ToggleBackground
@@ -272,10 +272,10 @@ local function createToggle(parent, titleText, callback)
         toggled = not toggled
         if toggled then
             TweenService:Create(ToggleBackground, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 140, 255)}):Play()
-            TweenService:Create(ToggleCircle, TweenInfo.new(0.15), {Position = UDim2.new(1, -14, 0.5, -6), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+            TweenService:Create(ToggleCircle, TweenInfo.new(0.15), {Position = UDim2.new(1, -13, 0.5, -5.5), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
         else
             TweenService:Create(ToggleBackground, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
-            TweenService:Create(ToggleCircle, TweenInfo.new(0.15), {Position = UDim2.new(0, 2, 0.5, -6), BackgroundColor3 = Color3.fromRGB(200, 200, 200)}):Play()
+            TweenService:Create(ToggleCircle, TweenInfo.new(0.15), {Position = UDim2.new(0, 2, 0.5, -5.5), BackgroundColor3 = Color3.fromRGB(200, 200, 200)}):Play()
         end
         callback(toggled)
     end)
@@ -376,7 +376,7 @@ createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function
     end
 end)
 
--- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (Auto Touch & Fast Trigger 0.01s ระยะ 50 Studs) ---
+-- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (0.01s ระยะ 50 Studs) ---
 local autoHarvestEnabled = false
 
 createToggle(HelpPlayContainer, "เดินเก็บอัตโนมัติ", function(state)
@@ -388,7 +388,6 @@ createToggle(HelpPlayContainer, "เดินเก็บอัตโนมั�
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 
                 if hrp then
-                    -- สร้างพื้นที่ตรวจจับรอบตัวละครผู้เล่น (ปรับระยะเป็น 50 Studs)
                     local overlapParams = OverlapParams.new()
                     overlapParams.FilterType = Enum.RaycastFilterType.Exclude
                     overlapParams.FilterDescendantsInstances = {char}
@@ -398,13 +397,11 @@ createToggle(HelpPlayContainer, "เดินเก็บอัตโนมั�
                     for _, part in ipairs(parts) do
                         if not autoHarvestEnabled then break end
                         
-                        -- 1. สั่งจำลองการแตะส่วนนั้นทันที (Fire Touch Interest)
                         if firetouchinterest then
                             firetouchinterest(hrp, part, 0)
                             firetouchinterest(hrp, part, 1)
                         end
                         
-                        -- 2. ตรวจหา ProximityPrompt บริเวณส่วนที่เดินผ่านในระยะ 50 Studs
                         local prompt = part:FindFirstChildWhichIsA("ProximityPrompt") or (part.Parent and part.Parent:FindFirstChildWhichIsA("ProximityPrompt"))
                         if prompt then
                             if fireproximityprompt then
@@ -416,11 +413,77 @@ createToggle(HelpPlayContainer, "เดินเก็บอัตโนมั�
                         end
                     end
                 end
-                task.wait(0.01) -- ความเร็วสแกนแบบมิลลิวินาที
+                task.wait(0.01)
             end
         end)
     end
 end)
+
+-- 3. หมวดใหม่ "ออโต้" (ระบบซื้อเมล็ดอัตโนมัติ เลือกได้มากกว่า 1)
+local AutoContainer = createContainer("ออโต้")
+
+local selectedSeeds = {}
+local autoBuyEnabled = false
+
+-- สวิตช์เปิด/ปิดการซื้ออัตโนมัติรวม
+createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัติ", function(state)
+    autoBuyEnabled = state
+    if autoBuyEnabled then
+        task.spawn(function()
+            while autoBuyEnabled do
+                for seedName, isSelected in pairs(selectedSeeds) do
+                    if not autoBuyEnabled then break end
+                    if isSelected then
+                        pcall(function()
+                            ReplicatedStorage:WaitForChild("RequestPurchase"):InvokeServer(seedName)
+                        end)
+                    end
+                end
+                task.wait(0.05)
+            end
+        end)
+    end
+end)
+
+-- หัวข้อแนะนำ
+local SubTitle = Instance.new("TextLabel")
+SubTitle.Size = UDim2.new(0.92, 0, 0, 16)
+SubTitle.BackgroundTransparency = 1
+SubTitle.Font = Enum.Font.GothamBold
+SubTitle.Text = "--- เลือกเมล็ดที่ต้องการซื้อ ---"
+SubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
+SubTitle.TextSize = 8
+SubTitle.Parent = AutoContainer
+
+-- รายชื่อเมล็ดภาษาอังกฤษทั้งหมดจากรูปภาพ
+local seedList = {
+    {name = "Carrot", label = "Carrot (แครอท)"},
+    {name = "Miki", label = "Miki Seed"},
+    {name = "MedTrad", label = "MedTrad Seed"},
+    {name = "EmoeHair", label = "EmoeHair Seed"},
+    {name = "Siw", label = "Siw Seed"},
+    {name = "Nom", label = "Nom Seed"},
+    {name = "Car", label = "Car (รถยนต์)"},
+    {name = "House", label = "House (บ้าน)"},
+    {name = "MysteryRocket", label = "MysteryRocket Seed"},
+    {name = "MysteryStick", label = "MysteryStick Seed"},
+    {name = "Bamboo", label = "Bamboo (ไม้ไผ่)"},
+    {name = "Eggkapok", label = "Eggkapok Seed"},
+    {name = "MrGreed", label = "MrGreed Seed"},
+    {name = "OldMhoy", label = "OldMhoy Seed"},
+    {name = "YoungMhoy", label = "YoungMhoy Seed"},
+    {name = "Ong", label = "Ong Seed"},
+    {name = "Budha", label = "Budha Seed"},
+    {name = "NorTad", label = "NorTad Seed"},
+    {name = "RobuxTree", label = "RobuxTree"}
+}
+
+-- สร้างสวิตช์เลือกซื้อเมล็ดแต่ละชนิด
+for _, seedData in ipairs(seedList) do
+    createToggle(AutoContainer, seedData.label, function(state)
+        selectedSeeds[seedData.name] = state
+    end)
+end
 
 -- ฟังก์ชันสลับหมวดหมู่
 local function switchTab(tabName)
@@ -452,6 +515,7 @@ end
 
 createCategoryButton("เมนูหลัก")
 createCategoryButton("ช่วยเล่น")
+createCategoryButton("ออโต้")
 
 -- เปิดหน้าแรกตั้งต้นที่ "เมนูหลัก"
 switchTab("เมนูหลัก")
@@ -486,7 +550,7 @@ task.spawn(function()
     
     local info = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     local expandTween = TweenService:Create(MainFrame, info, {
-        Size = UDim2.new(0, 330, 0, 200),
+        Size = UDim2.new(0, 350, 0, 210),
         BackgroundTransparency = 0
     })
     
