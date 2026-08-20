@@ -871,13 +871,28 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (แก้ไขให้รองรับ Remote ทั้งหมดยอดนิยมในเกมนี้)
-local function buyItemSmart(candidates)
-    -- ค้นหา Remote ของเกียร์ก่อนเป็นอันดับแรก ถ้าไม่เจอค่อยหาของเมล็ด
-    local reqRemote = ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
-        or ReplicatedStorage:FindFirstChild("RequestPurchase") 
+-- Helper: ฟังก์ชันแยกส่วนซื้อเมล็ดและเกียร์ออกจากกันเด็ดขาด เพื่อป้องกันการตีกันของ Remote
+local function buySeedSmart(candidates)
+    local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") 
         or ReplicatedStorage:FindFirstChild("PurchaseItem") 
         or ReplicatedStorage:FindFirstChild("BuyItem")
+        
+    if not reqRemote then return end
+
+    for _, itemName in ipairs(candidates) do
+        pcall(function()
+            if reqRemote:IsA("RemoteFunction") then
+                reqRemote:InvokeServer(itemName)
+            elseif reqRemote:IsA("RemoteEvent") then
+                reqRemote:FireServer(itemName)
+            end
+        end)
+    end
+end
+
+local function buyGearSmart(candidates)
+    local reqRemote = ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
+        or ReplicatedStorage:FindFirstChild("PurchaseGear")
         
     if not reqRemote then return end
 
@@ -909,7 +924,7 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
                     if isSelected then
                         for _, seedData in ipairs(seedList) do
                             if seedData.key == seedDataKey then
-                                buyItemSmart(seedData.candidates)
+                                buySeedSmart(seedData.candidates)
                                 break
                             end
                         end
@@ -1010,6 +1025,7 @@ local isUpdatingAllGears = false
 
 local SubTitleGears = Instance.new("TextLabel")
 SubTitleGears.Size = UDim2.new(0.92, 0, 0, 16)
+SubTitleSearsBG = SubTitleGears
 SubTitleGears.BackgroundTransparency = 1
 SubTitleGears.Font = Enum.Font.GothamBold
 SubTitleGears.Text = "--- ตัวเลือกซื้ออุปกรณ์/เกียร์ ---"
@@ -1027,7 +1043,7 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
                     if isSelected then
                         for _, gearData in ipairs(gearList) do
                             if gearData.key == gearKey then
-                                buyItemSmart(gearData.candidates)
+                                buyGearSmart(gearData.candidates)
                                 break
                             end
                         end
@@ -1166,21 +1182,21 @@ end
 
 -- สร้างปุ่มเลือกหมวดหมู่ทางซ้าย
 local function createCategoryButton(name)
-    valBtn = Instance.new("TextButton")
-    valBtn.Size = UDim2.new(0.9, 0, 0, 22)
-    valBtn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
-    valBtn.BorderSizePixel = 0
-    valBtn.Font = Enum.Font.GothamBold
-    valBtn.Text = name
-    valBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
-    valBtn.TextSize = 9
-    valBtn.Parent = LeftSide
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 22)
+    btn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    btn.TextSize = 9
+    btn.Parent = LeftSide
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 3)
-    corner.Parent = valBtn
+    corner.Parent = btn
 
-    valBtn.MouseButton1Click:Connect(function()
+    btn.MouseButton1Click:Connect(function()
         switchTab(name)
     end)
 end
@@ -1222,5 +1238,5 @@ task.spawn(function()
         BackgroundTransparency = 0
     })
     
-    expandTween:Play()
+    expandTween::Play()
 end)
