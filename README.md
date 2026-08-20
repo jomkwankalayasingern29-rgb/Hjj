@@ -51,10 +51,30 @@ local sellDelay = 0.1
 local harvestDelay = 0.1
 local buyDelay = 0.1
 
+-- ==================== ตัวแปรสถานะและควบคุมการทำงานทั้งหมด ====================
+local autoSellEnabled = false
+local autoHarvestEnabled = false
+local autoBuyEnabled = false
+local autoBuyGearsEnabled = false
+local infJumpEnabled = false
+
+local stopAllFunctions = function()
+    autoSellEnabled = false
+    autoHarvestEnabled = false
+    autoBuyEnabled = false
+    autoBuyGearsEnabled = false
+    infJumpEnabled = false
+    
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        hum.WalkSpeed = 16
+        hum.JumpPower = 50
+    end
+end
+
 -- ==================== ตัวแปรปรับแต่งตัวละคร ====================
 local customWalkSpeed = 16
 local customJumpPower = 50
-local infJumpEnabled = false
 
 -- ==================== ตัวแปรรักษาการกรองน้ำหนัก ====================
 local weightFilterEnabled = false
@@ -148,7 +168,7 @@ TitleLabel.TextSize = 10
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TopBar
 
--- ปุ่มปิด UI (X)
+-- ปุ่มปิด UI (X) พร้อมระบบยืนยัน
 local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 20, 0, 20)
 CloseButton.Position = UDim2.new(1, -22, 0, 2)
@@ -159,7 +179,91 @@ CloseButton.TextColor3 = Color3.fromRGB(220, 60, 60)
 CloseButton.TextSize = 11
 CloseButton.Parent = TopBar
 
+-- สร้างหน้าต่างยืนยันการปิด UI (Confirm Dialog)
+local ConfirmFrame = Instance.new("Frame")
+ConfirmFrame.Name = "ConfirmFrame"
+ConfirmFrame.Size = UDim2.new(1, 0, 1, 0)
+ConfirmFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ConfirmFrame.BackgroundTransparency = 0.1
+ConfirmFrame.BorderSizePixel = 0
+ConfirmFrame.Visible = false
+ConfirmFrame.ZIndex = 10
+ConfirmFrame.Parent = MainFrame
+
+local ConfirmBox = Instance.new("Frame")
+ConfirmBox.Size = UDim2.new(0, 220, 0, 85)
+ConfirmBox.Position = UDim2.new(0.5, -110, 0.5, -42)
+ConfirmBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ConfirmBox.BorderSizePixel = 0
+ConfirmBox.ZIndex = 11
+ConfirmBox.Parent = ConfirmFrame
+
+local ConfirmBoxCorner = Instance.new("UICorner")
+ConfirmBoxCorner.CornerRadius = UDim.new(0, 6)
+ConfirmBoxCorner.Parent = ConfirmBox
+
+local ConfirmBoxStroke = Instance.new("UIStroke")
+ConfirmBoxStroke.Color = Color3.fromRGB(0, 162, 255)
+ConfirmBoxStroke.Thickness = 1.2
+ConfirmBoxStroke.Parent = ConfirmBox
+
+local ConfirmText = Instance.new("TextLabel")
+ConfirmText.Size = UDim2.new(1, 0, 0, 35)
+ConfirmText.Position = UDim2.new(0, 0, 0, 8)
+ConfirmText.BackgroundTransparency = 1
+ConfirmText.Font = Enum.Font.GothamBold
+ConfirmText.Text = "แน่ใจหรือไม่ว่าต้องการปิด UI นี้?\nระบบจะหยุดฟังก์ชันทั้งหมดทันที"
+ConfirmText.TextColor3 = Color3.fromRGB(255, 255, 255)
+ConfirmText.TextSize = 10
+ConfirmText.ZIndex = 12
+ConfirmText.Parent = ConfirmBox
+
+-- ปุ่ม "ใช่" (ยืนยันปิด)
+local YesButton = Instance.new("TextButton")
+YesButton.Size = UDim2.new(0, 90, 0, 24)
+YesButton.Position = UDim2.new(0.08, 0, 1, -32)
+YesButton.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+YesButton.BorderSizePixel = 0
+YesButton.Font = Enum.Font.GothamBold
+YesButton.Text = "ใช่ (ปิด)"
+YesButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+YesButton.TextSize = 10
+YesButton.ZIndex = 12
+YesButton.Parent = ConfirmBox
+
+local YesCorner = Instance.new("UICorner")
+YesCorner.CornerRadius = UDim.new(0, 4)
+YesCorner.Parent = YesButton
+
+-- ปุ่ม "ไม่ใช่" (ยกเลิก)
+local NoButton = Instance.new("TextButton")
+NoButton.Size = UDim2.new(0, 90, 0, 24)
+NoButton.Position = UDim2.new(0.54, 0, 1, -32)
+NoButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+NoButton.BorderSizePixel = 0
+NoButton.Font = Enum.Font.GothamBold
+NoButton.Text = "ไม่ใช่"
+NoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoButton.TextSize = 10
+NoButton.ZIndex = 12
+NoButton.Parent = ConfirmBox
+
+local NoCorner = Instance.new("UICorner")
+NoCorner.CornerRadius = UDim.new(0, 4)
+NoCorner.Parent = NoButton
+
 CloseButton.MouseButton1Click:Connect(function()
+    ConfirmFrame.Visible = true
+end)
+
+NoButton.MouseButton1Click:Connect(function()
+    ConfirmFrame.Visible = false
+end)
+
+YesButton.MouseButton1Click:Connect(function()
+    if stopAllFunctions then
+        stopAllFunctions()
+    end
     ScreenGui:Destroy()
 end)
 
@@ -621,7 +725,6 @@ SellBtn.MouseButton1Click:Connect(function()
 end)
 
 -- --- ฟังก์ชัน: ขายอัตโนมัติ ---
-local autoSellEnabled = false
 createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function(state)
     autoSellEnabled = state
     if autoSellEnabled then
@@ -672,7 +775,6 @@ local function getFruitWeight(part)
 end
 
 -- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ ---
-local autoHarvestEnabled = false
 local shopBlacklist = {"npc", "shop", "merchant", "seller", "vendor", "store", "ร้าน", "ร้านค้า", "คุย", "talk", "buy", "ซื้อ", "dirt", "plot", "farm", "grass", "baseplate", "ground", "floor"}
 
 local function isValidHarvestTarget(part, prompt)
@@ -771,7 +873,7 @@ end)
 
 -- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม
 local function buyItemSmart(candidates)
-    local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
+    local reqRemote = ReplicatedStorage:FindFirstChild("RequestGearPurchase") or ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
     if not reqRemote then return end
 
     for _, itemName in ipairs(candidates) do
@@ -795,7 +897,6 @@ local AutoContainer = createContainer("ออโต้")
 local selectedSeeds = {}
 local seedToggles = {}
 local isUpdatingAllSeeds = false
-local autoBuyEnabled = false
 
 createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัติ", function(state)
     autoBuyEnabled = state
@@ -905,7 +1006,6 @@ end
 local selectedGears = {}
 local gearToggles = {}
 local isUpdatingAllGears = false
-local autoBuyGearsEnabled = false
 
 local SubTitleGears = Instance.new("TextLabel")
 SubTitleGears.Size = UDim2.new(0.92, 0, 0, 16)
@@ -939,10 +1039,9 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
 end)
 
 local gearList = {
-    {key = "PlantDestroyer", label = "อุปกรณ์กำจัดพืชผล", candidates = {"PlantDestroyer", "Plant Destroyer", "PlantDestroyerGear"}},
-    {key = "PlantMover", label = "Plant Mover Gear", candidates = {"PlantMover", "Plant Mover", "PlantMoverGear"}},
-    {key = "FartGear", label = "Fart Gear (อุปกรณ์เร่ง)", candidates = {"FartGear", "Fart Gear"}},
-    {key = "SprayWater", label = "Water Spray (อุปกรณ์รดน้ำ)", candidates = {"SprayWater", "Water Spray", "WaterSpray"}}
+    {key = "CropRemover", label = "CropRemover (ที่กำจัดพืชผล)", candidates = {"CropRemover", "PlantDestroyer", "Plant Destroyer"}},
+    {key = "PlantMover", label = "PlantMover (ย้ายพืชผล/จอบ)", candidates = {"PlantMover", "Plant Mover", "PlantMoverGear"}},
+    {key = "Ladder", label = "Ladder (บันได)", candidates = {"Ladder", "LadderGear"}}
 }
 
 local buyAllGearsToggleObj = nil
@@ -1117,8 +1216,8 @@ task.spawn(function()
     MainFrame.Visible = true
     MainFrame.Size = UDim2.new(0, 260, 0, 140)
     
-    local info = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local expandTween = TweenService:Create(MainFrame, info, {
+    _G.TweenInfoInstance = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local expandTween = TweenService:Create(MainFrame, _G.TweenInfoInstance, {
         Size = UDim2.new(0, 360, 0, 220),
         BackgroundTransparency = 0
     })
