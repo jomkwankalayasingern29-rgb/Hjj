@@ -45,11 +45,39 @@ LoadText.TextColor3 = Color3.fromRGB(255, 255, 255)
 LoadText.TextSize = 13
 LoadText.Parent = LoadFrame
 
+-- ==================== ตัวแปรความเร็วตั้งต้น (ปรับแต่งได้ 0.01s - 1s) ====================
+local sellDelay = 0.1
+local harvestDelay = 0.1
+local buyDelay = 0.1
+
+-- ==================== ระบบ Cache ProximityPrompt แก้ปัญหาแล็ก ====================
+local cachedPrompts = {}
+
+local function registerPrompt(prompt)
+    if prompt:IsA("ProximityPrompt") and not table.find(cachedPrompts, prompt) then
+        table.insert(cachedPrompts, prompt)
+    end
+end
+
+for _, v in ipairs(Workspace:GetDescendants()) do
+    registerPrompt(v)
+end
+
+Workspace.DescendantAdded:Connect(registerPrompt)
+Workspace.DescendantRemoving:Connect(function(v)
+    if v:IsA("ProximityPrompt") then
+        local idx = table.find(cachedPrompts, v)
+        if idx then
+            table.remove(cachedPrompts, idx)
+        end
+    end
+end)
+
 -- ==================== หน้าต่าง UI หลัก ====================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 350, 0, 210)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -105)
+MainFrame.Size = UDim2.new(0, 360, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -110)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -139,10 +167,10 @@ MinimizeButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     if isMinimized then
         MinimizeButton.Text = "+"
-        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = UDim2.new(0, 350, 0, 24)}):Play()
+        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = UDim2.new(0, 360, 0, 24)}):Play()
     else
         MinimizeButton.Text = "-"
-        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = UDim2.new(0, 350, 0, 210)}):Play()
+        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = UDim2.new(0, 360, 0, 220)}):Play()
     end
 end)
 
@@ -268,23 +296,103 @@ local function createToggle(parent, titleText, callback)
     CircleCorner.Parent = ToggleCircle
 
     local toggled = false
-    ToggleBackground.MouseButton1Click:Connect(function()
-        toggled = not toggled
+
+    local function setVisualState(state, triggerCallback)
+        toggled = state
         if toggled then
             TweenService:Create(ToggleBackground, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 140, 255)}):Play()
             TweenService:Create(ToggleCircle, TweenInfo.new(0.15), {Position = UDim2.new(1, -13, 0.5, -5.5), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
         else
             TweenService:Create(ToggleBackground, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
-            ToggleCircle.Position = UDim2.new(0, 2, 0.5, -5.5)
-            ToggleCircle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+            TweenService:Create(ToggleCircle, TweenInfo.new(0.15), {Position = UDim2.new(0, 2, 0.5, -5.5), BackgroundColor3 = Color3.fromRGB(200, 200, 200)}):Play()
         end
-        callback(toggled)
+        if triggerCallback ~= false then
+            callback(toggled)
+        end
+    end
+
+    ToggleBackground.MouseButton1Click:Connect(function()
+        setVisualState(not toggled, true)
     end)
+
+    return {
+        Frame = RowFrame,
+        SetState = function(state, fireCallback)
+            setVisualState(state, fireCallback)
+        end,
+        GetState = function()
+            return toggled
+        end
+    }
+end
+
+-- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลขปรับความเร็ว
+local function createNumberInput(parent, titleText, defaultVal, callback)
+    local RowFrame = Instance.new("Frame")
+    RowFrame.Size = UDim2.new(0.92, 0, 0, 24)
+    RowFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    RowFrame.BorderSizePixel = 0
+    RowFrame.Parent = parent
+
+    local RowCorner = Instance.new("UICorner")
+    RowCorner.CornerRadius = UDim.new(0, 4)
+    RowCorner.Parent = RowFrame
+
+    local RowStroke = Instance.new("UIStroke")
+    RowStroke.Color = Color3.fromRGB(50, 50, 50)
+    RowStroke.Thickness = 1
+    RowStroke.Parent = RowFrame
+
+    local RowLabel = Instance.new("TextLabel")
+    RowLabel.Size = UDim2.new(0.65, 0, 1, 0)
+    RowLabel.Position = UDim2.new(0, 8, 0, 0)
+    RowLabel.BackgroundTransparency = 1
+    RowLabel.Font = Enum.Font.GothamBold
+    RowLabel.Text = titleText
+    RowLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RowLabel.TextSize = 9
+    RowLabel.TextXAlignment = Enum.TextXAlignment.Left
+    RowLabel.Parent = RowFrame
+
+    local TextBox = Instance.new("TextBox")
+    TextBox.Size = UDim2.new(0, 45, 0, 16)
+    TextBox.Position = UDim2.new(1, -50, 0.5, -8)
+    TextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    TextBox.BorderSizePixel = 0
+    TextBox.Font = Enum.Font.GothamBold
+    TextBox.Text = tostring(defaultVal) .. "s"
+    TextBox.TextColor3 = Color3.fromRGB(0, 162, 255)
+    TextBox.TextSize = 9
+    TextBox.ClearTextOnFocus = false
+    TextBox.Parent = RowFrame
+
+    local TextCorner = Instance.new("UICorner")
+    TextCorner.CornerRadius = UDim.new(0, 3)
+    TextCorner.Parent = TextBox
+
+    local TextStroke = Instance.new("UIStroke")
+    TextStroke.Color = Color3.fromRGB(0, 162, 255)
+    TextStroke.Thickness = 0.8
+    TextStroke.Parent = TextBox
+
+    TextBox.FocusLost:Connect(function()
+        local num = tonumber(TextBox.Text:match("[%d%.]+"))
+        if num then
+            num = math.clamp(num, 0.01, 1.0)
+            TextBox.Text = tostring(num) .. "s"
+            callback(num)
+        else
+            TextBox.Text = tostring(defaultVal) .. "s"
+            callback(defaultVal)
+        end
+    end)
+
     return RowFrame
 end
 
 -- 1. หมวด "เมนูหลัก"
 local MainMenuContainer = createContainer("เมนูหลัก")
+
 local DiscordBtn = Instance.new("TextButton")
 DiscordBtn.Size = UDim2.new(0.92, 0, 0, 24)
 DiscordBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -308,6 +416,28 @@ DiscordBtn.MouseButton1Click:Connect(function()
     if setclipboard then
         setclipboard("https://discord.gg/Ugssja4wqQ")
     end
+end)
+
+-- เพิ่มส่วนปรับความเร็วลงในหมวดหมู่หลัก
+local SpeedHeader = Instance.new("TextLabel")
+SpeedHeader.Size = UDim2.new(0.92, 0, 0, 16)
+SpeedHeader.BackgroundTransparency = 1
+SpeedHeader.Font = Enum.Font.GothamBold
+SpeedHeader.Text = "--- ตั้งค่าความเร็ว (0.01s - 1s) ---"
+SpeedHeader.TextColor3 = Color3.fromRGB(0, 162, 255)
+SpeedHeader.TextSize = 8
+SpeedHeader.Parent = MainMenuContainer
+
+createNumberInput(MainMenuContainer, "ความเร็วขายของ", 0.1, function(val)
+    sellDelay = val
+end)
+
+createNumberInput(MainMenuContainer, "ความเร็วเก็บผลไม้", 0.1, function(val)
+    harvestDelay = val
+end)
+
+createNumberInput(MainMenuContainer, "ความเร็วซื้อเมล็ด", 0.1, function(val)
+    buyDelay = val
 end)
 
 -- 2. หมวด "ช่วยเล่น"
@@ -361,7 +491,7 @@ SellBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- --- ฟังก์ชัน: ขายอัตโนมัติ (0.01s) ---
+-- --- ฟังก์ชัน: ขายอัตโนมัติ (ใช้ sellDelay) ---
 local autoSellEnabled = false
 createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function(state)
     autoSellEnabled = state
@@ -371,16 +501,15 @@ createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function
                 pcall(function()
                     ReplicatedStorage:WaitForChild("RequestSell"):InvokeServer("sellAll")
                 end)
-                task.wait(0.01)
+                task.wait(sellDelay)
             end
         end)
     end
 end)
 
--- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (แก้ไขใหม่: ลื่นไหล ไม่แล็ก 100%) ---
+-- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (ระบบ Fast Cache ไม่แล็กแน่นอน) ---
 local autoHarvestEnabled = false
 
--- คำที่ต้องข้าม (ร้านค้า/NPC/ตัวละคร/พื้นดิน)
 local shopBlacklist = {"npc", "shop", "merchant", "seller", "vendor", "store", "ร้าน", "ร้านค้า", "คุย", "talk", "buy", "ซื้อ", "dirt", "plot", "farm", "grass", "baseplate", "ground", "floor"}
 
 local function isValidHarvestTarget(part, prompt)
@@ -422,14 +551,13 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
                 if hrp then
                     local myPos = hrp.Position
                     
-                    -- ปรับใช้วิธีวนลูปเฉพาะ ProximityPrompt ใน Workspace (เร็วกว่า และไม่กินความจุเครื่อง)
-                    for _, prompt in ipairs(Workspace:GetDescendants()) do
+                    for i = #cachedPrompts, 1, -1 do
                         if not autoHarvestEnabled then break end
+                        local prompt = cachedPrompts[i]
                         
-                        if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                        if prompt and prompt.Parent and prompt.Enabled then
                             local part = prompt.Parent
-                            if part and part:IsA("BasePart") then
-                                -- คำนวณระยะ 2D (ไม่คิดความสูง) ไม่เกิน 50 Studs
+                            if part:IsA("BasePart") then
                                 local dist2D = math.sqrt((myPos.X - part.Position.X)^2 + (myPos.Z - part.Position.Z)^2)
                                 
                                 if dist2D <= 50 and isValidHarvestTarget(part, prompt) then
@@ -449,16 +577,19 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
                         end
                     end
                 end
-                task.wait(0.1) -- ปรับเป็น 0.1s เพื่อความลื่นไหล ไม่ดึงเฟรมเรตตก
+                task.wait(harvestDelay)
             end
         end)
     end
 end)
 
--- 3. หมวด "ออโต้" (ระบบซื้อเมล็ดอัตโนมัติ)
+-- 3. หมวด "ออโต้" (ระบบซื้อเมล็ดอัตโนมัติ + สวิตช์ซื้อทั้งหมด)
 local AutoContainer = createContainer("ออโต้")
 
 local selectedSeeds = {}
+local seedToggles = {}
+local isUpdatingAll = false
+
 local autoBuyEnabled = false
 
 -- สวิตช์เปิด/ปิดการซื้ออัตโนมัติรวม
@@ -475,23 +606,23 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
                         end)
                     end
                 end
-                task.wait(0.05)
+                task.wait(buyDelay)
             end
         end)
     end
 end)
 
--- หัวข้อแนะนำ
+-- หัวข้อแยก
 local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(0.92, 0, 0, 16)
 SubTitle.BackgroundTransparency = 1
 SubTitle.Font = Enum.Font.GothamBold
-SubTitle.Text = "--- เลือกเมล็ดที่ต้องการซื้อ ---"
+SubTitle.Text = "--- ตัวเลือกซื้อเมล็ดพันธุ์ ---"
 SubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitle.TextSize = 8
 SubTitle.Parent = AutoContainer
 
--- รายชื่อเมล็ดภาษาอังกฤษทั้งหมดจากรูปภาพ (รวมทั้งหมด 24 ชนิด)
+-- รายชื่อเมล็ดภาษาอังกฤษทั้งหมด
 local seedList = {
     {name = "Carrot", label = "Carrot (แครอท)"},
     {name = "Miki", label = "Miki Seed"},
@@ -519,11 +650,49 @@ local seedList = {
     {name = "MysteryStickTree", label = "MysteryStickTree Seed"}
 }
 
+local buyAllToggleObj = nil
+
+local function checkAllSeedsState()
+    local allOn = true
+    for _, seedData in ipairs(seedList) do
+        if not selectedSeeds[seedData.name] then
+            allOn = false
+            break
+        end
+    end
+    
+    if buyAllToggleObj then
+        isUpdatingAll = true
+        buyAllToggleObj.SetState(allOn, false)
+        isUpdatingAll = false
+    end
+end
+
+-- สร้างสวิตช์ "ซื้อทั้งหมด"
+buyAllToggleObj = createToggle(AutoContainer, "ซื้อทั้งหมด", function(state)
+    if isUpdatingAll then return end
+    isUpdatingAll = true
+    
+    for _, seedData in ipairs(seedList) do
+        selectedSeeds[seedData.name] = state
+        if seedToggles[seedData.name] then
+            seedToggles[seedData.name].SetState(state, false)
+        end
+    end
+    
+    isUpdatingAll = false
+end)
+
 -- สร้างสวิตช์เลือกซื้อเมล็ดแต่ละชนิด
 for _, seedData in ipairs(seedList) do
-    createToggle(AutoContainer, seedData.label, function(state)
+    selectedSeeds[seedData.name] = false
+    local tObj = createToggle(AutoContainer, seedData.label, function(state)
         selectedSeeds[seedData.name] = state
+        if not isUpdatingAll then
+            checkAllSeedsState()
+        end
     end)
+    seedToggles[seedData.name] = tObj
 end
 
 -- ฟังก์ชันสลับหมวดหมู่
@@ -591,7 +760,7 @@ task.spawn(function()
     
     local info = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     local expandTween = TweenService:Create(MainFrame, info, {
-        Size = UDim2.new(0, 350, 0, 210),
+        Size = UDim2.new(0, 360, 0, 220),
         BackgroundTransparency = 0
     })
     
