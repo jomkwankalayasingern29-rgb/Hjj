@@ -769,29 +769,19 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (รองรับการใช้งานทั้งแบบ String และ unpack Table แบบยืดหยุ่น)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม
 local function buyItemSmart(candidates)
-    local reqRemote = ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
-        or ReplicatedStorage:FindFirstChild("RequestPurchase") 
-        or ReplicatedStorage:FindFirstChild("PurchaseItem") 
-        or ReplicatedStorage:FindFirstChild("BuyItem")
-        
+    local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
     if not reqRemote then return end
 
     for _, itemName in ipairs(candidates) do
         local success = false
         pcall(function()
             if reqRemote:IsA("RemoteFunction") then
-                local ok = pcall(function() reqRemote:InvokeServer(itemName) end)
-                if not ok then
-                    reqRemote:InvokeServer(unpack({itemName}))
-                end
+                reqRemote:InvokeServer(itemName)
                 success = true
             elseif reqRemote:IsA("RemoteEvent") then
-                local ok = pcall(function() reqRemote:FireServer(itemName) end)
-                if not ok then
-                    reqRemote:FireServer(unpack({itemName}))
-                end
+                reqRemote:FireServer(itemName)
                 success = true
             end
         end)
@@ -949,9 +939,10 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
 end)
 
 local gearList = {
-    {key = "CropRemover", label = "CropRemover (ที่กำจัดพืชผล)", candidates = {"CropRemover", "PlantDestroyer"}},
-    {key = "PlantMover", label = "PlantMover (ย้ายพืชผล/จอบ)", candidates = {"PlantMover", "Plant Mover"}},
-    {key = "Ladder", label = "Ladder (บันได)", candidates = {"Ladder", "LadderGear"}}
+    {key = "PlantDestroyer", label = "อุปกรณ์กำจัดพืชผล", candidates = {"PlantDestroyer", "Plant Destroyer", "PlantDestroyerGear"}},
+    {key = "PlantMover", label = "Plant Mover Gear", candidates = {"PlantMover", "Plant Mover", "PlantMoverGear"}},
+    {key = "FartGear", label = "Fart Gear (อุปกรณ์เร่ง)", candidates = {"FartGear", "Fart Gear"}},
+    {key = "SprayWater", label = "Water Spray (อุปกรณ์รดน้ำ)", candidates = {"SprayWater", "Water Spray", "WaterSpray"}}
 }
 
 local buyAllGearsToggleObj = nil
