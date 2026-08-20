@@ -50,6 +50,12 @@ local sellDelay = 0.1
 local harvestDelay = 0.1
 local buyDelay = 0.1
 
+-- ==================== ตัวแปรรักษาการกรองน้ำหนัก ====================
+local weightFilterEnabled = false
+local weightConditionMode = "greater" -- "greater" = สูงกว่า, "less" = ต่ำกว่า
+local targetWeightValue = 0
+local selectedWeightFruits = {}
+
 -- ==================== ระบบ Cache ProximityPrompt แก้ปัญหาแล็ก ====================
 local cachedPrompts = {}
 
@@ -326,8 +332,9 @@ local function createToggle(parent, titleText, callback)
     }
 end
 
--- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลขปรับความเร็ว
-local function createNumberInput(parent, titleText, defaultVal, callback)
+-- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลข
+local function createNumberInput(parent, titleText, defaultVal, callback, unitText)
+    unitText = unitText or "s"
     local RowFrame = Instance.new("Frame")
     RowFrame.Size = UDim2.new(0.92, 0, 0, 24)
     RowFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
@@ -355,12 +362,12 @@ local function createNumberInput(parent, titleText, defaultVal, callback)
     RowLabel.Parent = RowFrame
 
     local TextBox = Instance.new("TextBox")
-    TextBox.Size = UDim2.new(0, 45, 0, 16)
-    TextBox.Position = UDim2.new(1, -50, 0.5, -8)
+    TextBox.Size = UDim2.new(0, 50, 0, 16)
+    TextBox.Position = UDim2.new(1, -55, 0.5, -8)
     TextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     TextBox.BorderSizePixel = 0
     TextBox.Font = Enum.Font.GothamBold
-    TextBox.Text = tostring(defaultVal) .. "s"
+    TextBox.Text = tostring(defaultVal) .. unitText
     TextBox.TextColor3 = Color3.fromRGB(0, 162, 255)
     TextBox.TextSize = 9
     TextBox.ClearTextOnFocus = false
@@ -378,13 +385,72 @@ local function createNumberInput(parent, titleText, defaultVal, callback)
     TextBox.FocusLost:Connect(function()
         local num = tonumber(TextBox.Text:match("[%d%.]+"))
         if num then
-            num = math.clamp(num, 0.01, 1.0)
-            TextBox.Text = tostring(num) .. "s"
+            TextBox.Text = tostring(num) .. unitText
             callback(num)
         else
-            TextBox.Text = tostring(defaultVal) .. "s"
+            TextBox.Text = tostring(defaultVal) .. unitText
             callback(defaultVal)
         end
+    end)
+
+    return RowFrame
+end
+
+-- Helper: ฟังก์ชันสร้างสลับโหมดกด (Mode Button)
+local function createModeSelector(parent, titleText, defaultMode, callback)
+    local RowFrame = Instance.new("Frame")
+    RowFrame.Size = UDim2.new(0.92, 0, 0, 24)
+    RowFrame.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    RowFrame.BorderSizePixel = 0
+    RowFrame.Parent = parent
+
+    local RowCorner = Instance.new("UICorner")
+    RowCorner.CornerRadius = UDim.new(0, 4)
+    RowCorner.Parent = RowFrame
+
+    local RowStroke = Instance.new("UIStroke")
+    RowStroke.Color = Color3.fromRGB(50, 50, 50)
+    RowStroke.Thickness = 1
+    RowStroke.Parent = RowFrame
+
+    local RowLabel = Instance.new("TextLabel")
+    RowLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    RowLabel.Position = UDim2.new(0, 8, 0, 0)
+    RowLabel.BackgroundTransparency = 1
+    RowLabel.Font = Enum.Font.GothamBold
+    RowLabel.Text = titleText
+    RowLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    RowLabel.TextSize = 9
+    RowLabel.TextXAlignment = Enum.TextXAlignment.Left
+    RowLabel.Parent = RowFrame
+
+    local ModeBtn = Instance.new("TextButton")
+    ModeBtn.Size = UDim2.new(0, 75, 0, 16)
+    ModeBtn.Position = UDim2.new(1, -80, 0.5, -8)
+    ModeBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+    ModeBtn.BorderSizePixel = 0
+    ModeBtn.Font = Enum.Font.GothamBold
+    ModeBtn.Text = (defaultMode == "greater") and "สูงกว่า (>=)" or "ต่ำกว่า (<=)"
+    ModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ModeBtn.TextSize = 8
+    ModeBtn.Parent = RowFrame
+
+    local ModeCorner = Instance.new("UICorner")
+    ModeCorner.CornerRadius = UDim.new(0, 3)
+    ModeCorner.Parent = ModeBtn
+
+    local currentMode = defaultMode
+    ModeBtn.MouseButton1Click:Connect(function()
+        if currentMode == "greater" then
+            currentMode = "less"
+            ModeBtn.Text = "ต่ำกว่า (<=)"
+            ModeBtn.BackgroundColor3 = Color3.fromRGB(220, 120, 0)
+        else
+            currentMode = "greater"
+            ModeBtn.Text = "สูงกว่า (>=)"
+            ModeBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+        end
+        callback(currentMode)
     end)
 
     return RowFrame
@@ -418,7 +484,7 @@ DiscordBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- เพิ่มส่วนปรับความเร็วลงในหมวดหมู่หลัก
+-- ส่วนปรับความเร็ว
 local SpeedHeader = Instance.new("TextLabel")
 SpeedHeader.Size = UDim2.new(0.92, 0, 0, 16)
 SpeedHeader.BackgroundTransparency = 1
@@ -429,16 +495,16 @@ SpeedHeader.TextSize = 8
 SpeedHeader.Parent = MainMenuContainer
 
 createNumberInput(MainMenuContainer, "ความเร็วขายของ", 0.1, function(val)
-    sellDelay = val
-end)
+    sellDelay = math.clamp(val, 0.01, 1.0)
+end, "s")
 
 createNumberInput(MainMenuContainer, "ความเร็วเก็บผลไม้", 0.1, function(val)
-    harvestDelay = val
-end)
+    harvestDelay = math.clamp(val, 0.01, 1.0)
+end, "s")
 
 createNumberInput(MainMenuContainer, "ความเร็วซื้อเมล็ด", 0.1, function(val)
-    buyDelay = val
-end)
+    buyDelay = math.clamp(val, 0.01, 1.0)
+end, "s")
 
 -- 2. หมวด "ช่วยเล่น"
 local HelpPlayContainer = createContainer("ช่วยเล่น")
@@ -491,7 +557,7 @@ SellBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- --- ฟังก์ชัน: ขายอัตโนมัติ (ใช้ sellDelay) ---
+-- --- ฟังก์ชัน: ขายอัตโนมัติ ---
 local autoSellEnabled = false
 createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function(state)
     autoSellEnabled = state
@@ -507,9 +573,42 @@ createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function
     end
 end)
 
--- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (ระบบ Fast Cache ไม่แล็กแน่นอน) ---
-local autoHarvestEnabled = false
+-- --- ฟังก์ชัน: ดึงค่าน้ำหนักของผลไม้ ---
+local function getFruitWeight(part)
+    local parentModel = part:FindFirstAncestorOfClass("Model") or part.Parent
+    if not parentModel then return nil end
 
+    -- ค้นหาตัวแปร Value โดยตรง
+    local weightVal = parentModel:FindFirstChild("Weight") or parentModel:FindFirstChild("weight") or part:FindFirstChild("Weight")
+    if weightVal then
+        if weightVal:IsA("NumberValue") or weightVal:IsA("IntValue") then
+            return weightVal.Value
+        elseif weightVal:IsA("StringValue") then
+            local num = tonumber(weightVal.Value:match("[%d%.]+"))
+            if num then return num end
+        end
+    end
+
+    -- ค้นหาข้อความใน BillboardGui หรือ TextLabel
+    for _, child in ipairs(parentModel:GetDescendants()) do
+        if child:IsA("TextLabel") or child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
+            local text = child:IsA("TextLabel") and child.Text or ""
+            if text == "" and child:FindFirstChildWhichIsA("TextLabel") then
+                text = child:FindFirstChildWhichIsA("TextLabel").Text
+            end
+            
+            local weightNum = tonumber(text:match("[%d%.]+"))
+            if weightNum and (string.find(string.lower(text), "kg") or string.find(string.lower(text), "weight") or string.find(text, "น้ำหนัก")) then
+                return weightNum
+            end
+        end
+    end
+
+    return nil
+end
+
+-- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (รองรับกรองน้ำหนัก) ---
+local autoHarvestEnabled = false
 local shopBlacklist = {"npc", "shop", "merchant", "seller", "vendor", "store", "ร้าน", "ร้านค้า", "คุย", "talk", "buy", "ซื้อ", "dirt", "plot", "farm", "grass", "baseplate", "ground", "floor"}
 
 local function isValidHarvestTarget(part, prompt)
@@ -533,6 +632,31 @@ local function isValidHarvestTarget(part, prompt)
         for _, badWord in ipairs(shopBlacklist) do
             if string.find(actionText, badWord) or string.find(objectText, badWord) then
                 return false
+            end
+        end
+    end
+
+    -- ตรวจสอบเงื่อนไขกรองน้ำหนัก
+    if weightFilterEnabled then
+        local matchedSelectedFruit = false
+        for fruitName, isSelected in pairs(selectedWeightFruits) do
+            if isSelected then
+                if string.find(partName, string.lower(fruitName)) or string.find(parentName, string.lower(fruitName)) then
+                    matchedSelectedFruit = true
+                    break
+                end
+            end
+        end
+
+        -- หากผลไม้นี้อยู่ในรายการที่เลือกกรองน้ำหนัก ให้ตรวจสอบน้ำหนัก
+        if matchedSelectedFruit then
+            local weight = getFruitWeight(part)
+            if weight then
+                if weightConditionMode == "greater" and weight < targetWeightValue then
+                    return false -- น้ำหนักไม่ถึงขั้นต่ำ ข้าม
+                elseif weightConditionMode == "less" and weight > targetWeightValue then
+                    return false -- น้ำหนักเกินขั้นสูง ข้าม
+                end
             end
         end
     end
@@ -583,16 +707,14 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- 3. หมวด "ออโต้" (ระบบซื้อเมล็ดอัตโนมัติ + สวิตช์ซื้อทั้งหมด)
+-- 3. หมวด "ออโต้" (ซื้อเมล็ดพันธุ์อัตโนมัติ)
 local AutoContainer = createContainer("ออโต้")
 
 local selectedSeeds = {}
 local seedToggles = {}
 local isUpdatingAll = false
-
 local autoBuyEnabled = false
 
--- สวิตช์เปิด/ปิดการซื้ออัตโนมัติรวม
 createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัติ", function(state)
     autoBuyEnabled = state
     if autoBuyEnabled then
@@ -612,7 +734,6 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
     end
 end)
 
--- หัวข้อแยก
 local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(0.92, 0, 0, 16)
 SubTitle.BackgroundTransparency = 1
@@ -622,7 +743,6 @@ SubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitle.TextSize = 8
 SubTitle.Parent = AutoContainer
 
--- รายชื่อเมล็ดภาษาอังกฤษทั้งหมด
 local seedList = {
     {name = "Carrot", label = "Carrot (แครอท)"},
     {name = "Miki", label = "Miki Seed"},
@@ -668,7 +788,6 @@ local function checkAllSeedsState()
     end
 end
 
--- สร้างสวิตช์ "ซื้อทั้งหมด"
 buyAllToggleObj = createToggle(AutoContainer, "ซื้อทั้งหมด", function(state)
     if isUpdatingAll then return end
     isUpdatingAll = true
@@ -683,7 +802,6 @@ buyAllToggleObj = createToggle(AutoContainer, "ซื้อทั้งหมด
     isUpdatingAll = false
 end)
 
--- สร้างสวิตช์เลือกซื้อเมล็ดแต่ละชนิด
 for _, seedData in ipairs(seedList) do
     selectedSeeds[seedData.name] = false
     local tObj = createToggle(AutoContainer, seedData.label, function(state)
@@ -693,6 +811,38 @@ for _, seedData in ipairs(seedList) do
         end
     end)
     seedToggles[seedData.name] = tObj
+end
+
+-- 4. หมวดใหม่ "ขั้นต่ำน้ำหนัก" (Weight Filter Settings)
+local WeightContainer = createContainer("ขั้นต่ำน้ำหนัก")
+
+createToggle(WeightContainer, "เปิดใช้งานกรองน้ำหนัก", function(state)
+    weightFilterEnabled = state
+end)
+
+createModeSelector(WeightContainer, "โหมดการเก็บ", "greater", function(mode)
+    weightConditionMode = mode
+end)
+
+createNumberInput(WeightContainer, "น้ำหนักเป้าหมาย", 0, function(val)
+    targetWeightValue = val
+end, "kg")
+
+local WeightSubTitle = Instance.new("TextLabel")
+WeightSubTitle.Size = UDim2.new(0.92, 0, 0, 16)
+WeightSubTitle.BackgroundTransparency = 1
+WeightSubTitle.Font = Enum.Font.GothamBold
+WeightSubTitle.Text = "--- เลือกผลไม้ที่ต้องการกรอง ---"
+WeightSubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
+WeightSubTitle.TextSize = 8
+WeightSubTitle.Parent = WeightContainer
+
+-- รายการผลไม้สำหรับเลือกกรองน้ำหนัก
+for _, seedData in ipairs(seedList) do
+    selectedWeightFruits[seedData.name] = false
+    createToggle(WeightContainer, seedData.label, function(state)
+        selectedWeightFruits[seedData.name] = state
+    end)
 end
 
 -- ฟังก์ชันสลับหมวดหมู่
@@ -726,6 +876,7 @@ end
 createCategoryButton("เมนูหลัก")
 createCategoryButton("ช่วยเล่น")
 createCategoryButton("ออโต้")
+createCategoryButton("ขั้นต่ำน้ำหนัก")
 
 -- เปิดหน้าแรกตั้งต้นที่ "เมนูหลัก"
 switchTab("เมนูหลัก")
