@@ -376,47 +376,41 @@ createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function
     end
 end)
 
--- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (คัดกรองเฉพาะผลไม้/พืชผล ระยะ 50 Studs) ---
+-- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (กรองข้ามร้านค้า/NPC 100%) ---
 local autoHarvestEnabled = false
 
--- คำศัพท์สำหรับคัดกรองเฉพาะ "ผลไม้/พืชผล/การเก็บเกี่ยว"
-local fruitKeywords = {"fruit", "crop", "harvest", "pick", "เก็บ", "เก็บเกี่ยว", "ผลไม้", "ผล", "tree", "plant"}
-local ignoreKeywords = {"dirt", "plot", "farm", "grass", "baseplate", "ground", "floor", "terrain"}
+-- รายการคำที่ไม่เอา (Blacklist ร้านค้า/NPC/ตัวละคร/พื้นดิน)
+local shopBlacklist = {"npc", "shop", "merchant", "seller", "vendor", "store", "ร้าน", "ร้านค้า", "คุย", "talk", "buy", "ซื้อ", "dirt", "plot", "farm", "grass", "baseplate", "ground", "floor"}
 
-local function isFruitOrCrop(obj, prompt)
-    local objName = string.lower(obj.Name)
+local function isValidHarvestTarget(part, prompt)
+    -- 1. เช็คว่าอยู่ใน NPC หรือผู้เล่นอื่นหรือไม่ (ถ้ามี Humanoid ใน Model บล็อกทันที)
+    local parentModel = part:FindFirstAncestorOfClass("Model")
+    if parentModel and parentModel:FindFirstChildOfClass("Humanoid") then
+        return false
+    end
+
+    local partName = string.lower(part.Name)
+    local parentName = parentModel and string.lower(parentModel.Name) or ""
     
-    -- ข้ามพาร์ทพื้นดิน/แปลงปลูก
-    for _, ignore in ipairs(ignoreKeywords) do
-        if string.find(objName, ignore) then
+    -- 2. เช็คชื่อ Part หรือ Model ตรงกับ Blacklist ร้านค้าไหม
+    for _, badWord in ipairs(shopBlacklist) do
+        if string.find(partName, badWord) or string.find(parentName, badWord) then
             return false
         end
     end
-    
-    -- เช็คจากชื่อ Object
-    for _, kw in ipairs(fruitKeywords) do
-        if string.find(objName, kw) then
-            return true
-        end
-    end
-    
-    -- เช็คจาก ProximityPrompt
+
+    -- 3. ถ้ามี ProximityPrompt ให้เช็คข้อความในปุ่มคุย
     if prompt then
         local actionText = string.lower(tostring(prompt.ActionText))
         local objectText = string.lower(tostring(prompt.ObjectText))
-        for _, kw in ipairs(fruitKeywords) do
-            if string.find(actionText, kw) or string.find(objectText, kw) then
-                return true
+        for _, badWord in ipairs(shopBlacklist) do
+            if string.find(actionText, badWord) or string.find(objectText, badWord) then
+                return false
             end
         end
     end
 
-    -- หากวัตถุเป็นโมเดลต้นไม้/ผลไม้ทั่วไป
-    if obj:IsA("Model") or obj.Parent:IsA("Model") then
-        return true
-    end
-
-    return false
+    return true
 end
 
 createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออโต้", function(state)
@@ -439,8 +433,8 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
                         
                         local prompt = part:FindFirstChildWhichIsA("ProximityPrompt") or (part.Parent and part.Parent:FindFirstChildWhichIsA("ProximityPrompt"))
                         
-                        -- แตะเก็บเฉพาะวัตถุที่เป็นผลไม้/พืชผล
-                        if isFruitOrCrop(part, prompt) then
+                        -- แตะเก็บเฉพาะเป้าหมายที่ไม่ใช่ NPC หรือ ร้านค้า
+                        if isValidHarvestTarget(part, prompt) then
                             if firetouchinterest then
                                 firetouchinterest(hrp, part, 0)
                                 firetouchinterest(hrp, part, 1)
@@ -463,7 +457,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- 3. หมวด "ออโต้" (ระบบซื้อเมล็ดอัตโนมัติ เลือกได้มากกว่า 1)
+-- 3. หมวด "ออโต้" (ระบบซื้อเมล็ดอัตโนมัติ)
 local AutoContainer = createContainer("ออโต้")
 
 local selectedSeeds = {}
