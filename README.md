@@ -275,7 +275,8 @@ local function createToggle(parent, titleText, callback)
             TweenService:Create(ToggleCircle, TweenInfo.new(0.15), {Position = UDim2.new(1, -13, 0.5, -5.5), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
         else
             TweenService:Create(ToggleBackground, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
-            TweenService:Create(ToggleCircle, TweenInfo.new(0.15), {Position = UDim2.new(0, 2, 0.5, -5.5), BackgroundColor3 = Color3.fromRGB(200, 200, 200)}):Play()
+            ToggleCircle.Position = UDim2.new(0, 2, 0.5, -5.5)
+            ToggleCircle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
         end
         callback(toggled)
     end)
@@ -376,14 +377,13 @@ createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function
     end
 end)
 
--- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (กรองข้ามร้านค้า/NPC 100%) ---
+-- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (แก้ไขใหม่: ลื่นไหล ไม่แล็ก 100%) ---
 local autoHarvestEnabled = false
 
--- รายการคำที่ไม่เอา (Blacklist ร้านค้า/NPC/ตัวละคร/พื้นดิน)
+-- คำที่ต้องข้าม (ร้านค้า/NPC/ตัวละคร/พื้นดิน)
 local shopBlacklist = {"npc", "shop", "merchant", "seller", "vendor", "store", "ร้าน", "ร้านค้า", "คุย", "talk", "buy", "ซื้อ", "dirt", "plot", "farm", "grass", "baseplate", "ground", "floor"}
 
 local function isValidHarvestTarget(part, prompt)
-    -- 1. เช็คว่าอยู่ใน NPC หรือผู้เล่นอื่นหรือไม่ (ถ้ามี Humanoid ใน Model บล็อกทันที)
     local parentModel = part:FindFirstAncestorOfClass("Model")
     if parentModel and parentModel:FindFirstChildOfClass("Humanoid") then
         return false
@@ -392,14 +392,12 @@ local function isValidHarvestTarget(part, prompt)
     local partName = string.lower(part.Name)
     local parentName = parentModel and string.lower(parentModel.Name) or ""
     
-    -- 2. เช็คชื่อ Part หรือ Model ตรงกับ Blacklist ร้านค้าไหม
     for _, badWord in ipairs(shopBlacklist) do
         if string.find(partName, badWord) or string.find(parentName, badWord) then
             return false
         end
     end
 
-    -- 3. ถ้ามี ProximityPrompt ให้เช็คข้อความในปุ่มคุย
     if prompt then
         local actionText = string.lower(tostring(prompt.ActionText))
         local objectText = string.lower(tostring(prompt.ObjectText))
@@ -422,36 +420,36 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 
                 if hrp then
-                    local overlapParams = OverlapParams.new()
-                    overlapParams.FilterType = Enum.RaycastFilterType.Exclude
-                    overlapParams.FilterDescendantsInstances = {char}
-
-                    local parts = Workspace:GetPartBoundsInRadius(hrp.Position, 50, overlapParams)
+                    local myPos = hrp.Position
                     
-                    for _, part in ipairs(parts) do
+                    -- ปรับใช้วิธีวนลูปเฉพาะ ProximityPrompt ใน Workspace (เร็วกว่า และไม่กินความจุเครื่อง)
+                    for _, prompt in ipairs(Workspace:GetDescendants()) do
                         if not autoHarvestEnabled then break end
                         
-                        local prompt = part:FindFirstChildWhichIsA("ProximityPrompt") or (part.Parent and part.Parent:FindFirstChildWhichIsA("ProximityPrompt"))
-                        
-                        -- แตะเก็บเฉพาะเป้าหมายที่ไม่ใช่ NPC หรือ ร้านค้า
-                        if isValidHarvestTarget(part, prompt) then
-                            if firetouchinterest then
-                                firetouchinterest(hrp, part, 0)
-                                firetouchinterest(hrp, part, 1)
-                            end
-                            
-                            if prompt then
-                                if fireproximityprompt then
-                                    fireproximityprompt(prompt)
-                                elseif prompt.InputHoldBegin then
-                                    prompt:InputHoldBegin()
-                                    prompt:InputHoldEnd()
+                        if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                            local part = prompt.Parent
+                            if part and part:IsA("BasePart") then
+                                -- คำนวณระยะ 2D (ไม่คิดความสูง) ไม่เกิน 50 Studs
+                                local dist2D = math.sqrt((myPos.X - part.Position.X)^2 + (myPos.Z - part.Position.Z)^2)
+                                
+                                if dist2D <= 50 and isValidHarvestTarget(part, prompt) then
+                                    if fireproximityprompt then
+                                        fireproximityprompt(prompt)
+                                    elseif prompt.InputHoldBegin then
+                                        prompt:InputHoldBegin()
+                                        prompt:InputHoldEnd()
+                                    end
+                                    
+                                    if firetouchinterest then
+                                        firetouchinterest(hrp, part, 0)
+                                        firetouchinterest(hrp, part, 1)
+                                    end
                                 end
                             end
                         end
                     end
                 end
-                task.wait(0.01)
+                task.wait(0.1) -- ปรับเป็น 0.1s เพื่อความลื่นไหล ไม่ดึงเฟรมเรตตก
             end
         end)
     end
