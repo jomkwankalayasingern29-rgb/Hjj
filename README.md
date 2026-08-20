@@ -45,7 +45,7 @@ LoadText.TextColor3 = Color3.fromRGB(255, 255, 255)
 LoadText.TextSize = 13
 LoadText.Parent = LoadFrame
 
--- ==================== ตัวแปรความเร็วตั้งต้น (ปรับแต่งได้ 0.01s - 1s) ====================
+-- ==================== ตัวแปรความเร็วตั้งต้น (0.01s - 1s) ====================
 local sellDelay = 0.1
 local harvestDelay = 0.1
 local buyDelay = 0.1
@@ -332,7 +332,7 @@ local function createToggle(parent, titleText, callback)
     }
 end
 
--- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลข
+-- Helper: ฟังก์ชันสร้างช่องกรอกตัวเลข (ปรับปรุงให้อ่านง่าย คมชัด ไม่เรืองแสง)
 local function createNumberInput(parent, titleText, defaultVal, callback, unitText)
     unitText = unitText or "s"
     local RowFrame = Instance.new("Frame")
@@ -368,7 +368,7 @@ local function createNumberInput(parent, titleText, defaultVal, callback, unitTe
     TextBox.BorderSizePixel = 0
     TextBox.Font = Enum.Font.GothamBold
     TextBox.Text = tostring(defaultVal) .. unitText
-    TextBox.TextColor3 = Color3.fromRGB(0, 162, 255)
+    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255) -- เปลี่ยนเป็นสีขาวคมชัด อ่านง่าย ไม่สะท้อนเรืองแสง
     TextBox.TextSize = 9
     TextBox.ClearTextOnFocus = false
     TextBox.Parent = RowFrame
@@ -376,11 +376,6 @@ local function createNumberInput(parent, titleText, defaultVal, callback, unitTe
     local TextCorner = Instance.new("UICorner")
     TextCorner.CornerRadius = UDim.new(0, 3)
     TextCorner.Parent = TextBox
-
-    local TextStroke = Instance.new("UIStroke")
-    TextStroke.Color = Color3.fromRGB(0, 162, 255)
-    TextStroke.Thickness = 0.8
-    TextStroke.Parent = TextBox
 
     TextBox.FocusLost:Connect(function()
         local num = tonumber(TextBox.Text:match("[%d%.]+"))
@@ -578,7 +573,6 @@ local function getFruitWeight(part)
     local parentModel = part:FindFirstAncestorOfClass("Model") or part.Parent
     if not parentModel then return nil end
 
-    -- ค้นหาตัวแปร Value โดยตรง
     local weightVal = parentModel:FindFirstChild("Weight") or parentModel:FindFirstChild("weight") or part:FindFirstChild("Weight")
     if weightVal then
         if weightVal:IsA("NumberValue") or weightVal:IsA("IntValue") then
@@ -589,7 +583,6 @@ local function getFruitWeight(part)
         end
     end
 
-    -- ค้นหาข้อความใน BillboardGui หรือ TextLabel
     for _, child in ipairs(parentModel:GetDescendants()) do
         if child:IsA("TextLabel") or child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
             local text = child:IsA("TextLabel") and child.Text or ""
@@ -607,7 +600,7 @@ local function getFruitWeight(part)
     return nil
 end
 
--- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ (รองรับกรองน้ำหนัก) ---
+-- --- ฟังก์ชัน: เดินผ่านแล้วเก็บอัตโนมัติ ---
 local autoHarvestEnabled = false
 local shopBlacklist = {"npc", "shop", "merchant", "seller", "vendor", "store", "ร้าน", "ร้านค้า", "คุย", "talk", "buy", "ซื้อ", "dirt", "plot", "farm", "grass", "baseplate", "ground", "floor"}
 
@@ -636,7 +629,6 @@ local function isValidHarvestTarget(part, prompt)
         end
     end
 
-    -- ตรวจสอบเงื่อนไขกรองน้ำหนัก
     if weightFilterEnabled then
         local matchedSelectedFruit = false
         for fruitName, isSelected in pairs(selectedWeightFruits) do
@@ -648,14 +640,13 @@ local function isValidHarvestTarget(part, prompt)
             end
         end
 
-        -- หากผลไม้นี้อยู่ในรายการที่เลือกกรองน้ำหนัก ให้ตรวจสอบน้ำหนัก
         if matchedSelectedFruit then
             local weight = getFruitWeight(part)
             if weight then
                 if weightConditionMode == "greater" and weight < targetWeightValue then
-                    return false -- น้ำหนักไม่ถึงขั้นต่ำ ข้าม
+                    return false
                 elseif weightConditionMode == "less" and weight > targetWeightValue then
-                    return false -- น้ำหนักเกินขั้นสูง ข้าม
+                    return false
                 end
             end
         end
@@ -707,14 +698,15 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- 3. หมวด "ออโต้" (ซื้อเมล็ดพันธุ์อัตโนมัติ)
+-- 3. หมวด "ออโต้" (ซื้อเมล็ดพันธุ์ + ซื้อเกียร์อัตโนมัติ)
 local AutoContainer = createContainer("ออโต้")
 
 local selectedSeeds = {}
 local seedToggles = {}
-local isUpdatingAll = false
+local isUpdatingAllSeeds = false
 local autoBuyEnabled = false
 
+-- สวิตช์ซื้อเมล็ดอัตโนมัติรวม
 createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัติ", function(state)
     autoBuyEnabled = state
     if autoBuyEnabled then
@@ -734,14 +726,14 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
     end
 end)
 
-local SubTitle = Instance.new("TextLabel")
-SubTitle.Size = UDim2.new(0.92, 0, 0, 16)
-SubTitle.BackgroundTransparency = 1
-SubTitle.Font = Enum.Font.GothamBold
-SubTitle.Text = "--- ตัวเลือกซื้อเมล็ดพันธุ์ ---"
-SubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
-SubTitle.TextSize = 8
-SubTitle.Parent = AutoContainer
+local SubTitleSeeds = Instance.new("TextLabel")
+SubTitleSeeds.Size = UDim2.new(0.92, 0, 0, 16)
+SubTitleSeeds.BackgroundTransparency = 1
+SubTitleSeeds.Font = Enum.Font.GothamBold
+SubTitleSeeds.Text = "--- ตัวเลือกซื้อเมล็ดพันธุ์ ---"
+SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
+SubTitleSeeds.TextSize = 8
+SubTitleSeeds.Parent = AutoContainer
 
 local seedList = {
     {name = "Carrot", label = "Carrot (แครอท)"},
@@ -770,7 +762,7 @@ local seedList = {
     {name = "MysteryStickTree", label = "MysteryStickTree Seed"}
 }
 
-local buyAllToggleObj = nil
+local buyAllSeedsToggleObj = nil
 
 local function checkAllSeedsState()
     local allOn = true
@@ -781,16 +773,16 @@ local function checkAllSeedsState()
         end
     end
     
-    if buyAllToggleObj then
-        isUpdatingAll = true
-        buyAllToggleObj.SetState(allOn, false)
-        isUpdatingAll = false
+    if buyAllSeedsToggleObj then
+        isUpdatingAllSeeds = true
+        buyAllSeedsToggleObj.SetState(allOn, false)
+        isUpdatingAllSeeds = false
     end
 end
 
-buyAllToggleObj = createToggle(AutoContainer, "ซื้อทั้งหมด", function(state)
-    if isUpdatingAll then return end
-    isUpdatingAll = true
+buyAllSeedsToggleObj = createToggle(AutoContainer, "ซื้อเมล็ดทั้งหมด", function(state)
+    if isUpdatingAllSeeds then return end
+    isUpdatingAllSeeds = true
     
     for _, seedData in ipairs(seedList) do
         selectedSeeds[seedData.name] = state
@@ -799,21 +791,105 @@ buyAllToggleObj = createToggle(AutoContainer, "ซื้อทั้งหมด
         end
     end
     
-    isUpdatingAll = false
+    isUpdatingAllSeeds = false
 end)
 
 for _, seedData in ipairs(seedList) do
     selectedSeeds[seedData.name] = false
     local tObj = createToggle(AutoContainer, seedData.label, function(state)
         selectedSeeds[seedData.name] = state
-        if not isUpdatingAll then
+        if not isUpdatingAllSeeds then
             checkAllSeedsState()
         end
     end)
     seedToggles[seedData.name] = tObj
 end
 
--- 4. หมวดใหม่ "ขั้นต่ำน้ำหนัก" (Weight Filter Settings)
+-- ==================== เพิ่มส่วน: ซื้อเกียร์อัตโนมัติ ====================
+local selectedGears = {}
+local gearToggles = {}
+local isUpdatingAllGears = false
+local autoBuyGearsEnabled = false
+
+local SubTitleGears = Instance.new("TextLabel")
+SubTitleGears.Size = UDim2.new(0.92, 0, 0, 16)
+SubTitleGears.BackgroundTransparency = 1
+SubTitleGears.Font = Enum.Font.GothamBold
+SubTitleGears.Text = "--- ตัวเลือกซื้ออุปกรณ์/เกียร์ ---"
+SubTitleGears.TextColor3 = Color3.fromRGB(0, 162, 255)
+SubTitleGears.TextSize = 8
+SubTitleGears.Parent = AutoContainer
+
+-- สวิตช์ซื้อเกียร์อัตโนมัติรวม
+createToggle(AutoContainer, "ซื้อเกียร์อัตโนมัติ", function(state)
+    autoBuyGearsEnabled = state
+    if autoBuyGearsEnabled then
+        task.spawn(function()
+            while autoBuyGearsEnabled do
+                for gearName, isSelected in pairs(selectedGears) do
+                    if not autoBuyGearsEnabled then break end
+                    if isSelected then
+                        pcall(function()
+                            ReplicatedStorage:WaitForChild("RequestPurchase"):InvokeServer(gearName)
+                        end)
+                    end
+                end
+                task.wait(buyDelay)
+            end
+        end)
+    end
+end)
+
+-- รายชื่อเกียร์ภาษาอังกฤษจากรูปภาพ
+local gearList = {
+    {name = "PlantDestroyer", label = "อุปกรณ์กำจัดพืชผล"},
+    {name = "PlantMover", label = "Plant Mover Gear"}
+}
+
+local buyAllGearsToggleObj = nil
+
+local function checkAllGearsState()
+    local allOn = true
+    for _, gearData in ipairs(gearList) do
+        if not selectedGears[gearData.name] then
+            allOn = false
+            break
+        end
+    end
+    
+    if buyAllGearsToggleObj then
+        isUpdatingAllGears = true
+        buyAllGearsToggleObj.SetState(allOn, false)
+        isUpdatingAllGears = false
+    end
+end
+
+buyAllGearsToggleObj = createToggle(AutoContainer, "ซื้อเกียร์ทั้งหมด", function(state)
+    if isUpdatingAllGears then return end
+    isUpdatingAllGears = true
+    
+    for _, gearData in ipairs(gearList) do
+        selectedGears[gearData.name] = state
+        if gearToggles[gearData.name] then
+            gearToggles[gearData.name].SetState(state, false)
+        end
+    end
+    
+    isUpdatingAllGears = false
+end)
+
+for _, gearData in ipairs(gearList) do
+    selectedGears[gearData.name] = false
+    local tObj = createToggle(AutoContainer, gearData.label, function(state)
+        selectedGears[gearData.name] = state
+        if not isUpdatingAllGears then
+            checkAllGearsState()
+        end
+    end)
+    gearToggles[gearData.name] = tObj
+end
+
+-- 4. หมวด "ขั้นต่ำน้ำหนัก" (Weight Filter Settings)
 local WeightContainer = createContainer("ขั้นต่ำน้ำหนัก")
 
 createToggle(WeightContainer, "เปิดใช้งานกรองน้ำหนัก", function(state)
