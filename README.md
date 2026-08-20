@@ -1211,7 +1211,7 @@ switchTab("เมนูหลัก")
 task.spawn(function()
     local count = 0
     while count < 6 do
-        LoadText.Text = "กำลังโหลด" .. string.rep(".", (count % 4))
+        LoadText.Text = "กำลังโหลด" + string.rep(".", (count % 4))
         task.wait(0.3)
         count += 1
     end
