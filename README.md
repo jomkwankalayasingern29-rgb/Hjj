@@ -871,7 +871,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันแยกส่วนซื้อเมล็ดและเกียร์ออกจากกันเด็ดขาด เพื่อป้องกันการตีกันของ Remote
+-- Helper: ฟังก์ชันแยกส่วนซื้อเมล็ดและเกียร์ออกจากกันเด็ดขาด
 local function buySeedSmart(candidates)
     local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") 
         or ReplicatedStorage:FindFirstChild("PurchaseItem") 
@@ -1025,7 +1025,6 @@ local isUpdatingAllGears = false
 
 local SubTitleGears = Instance.new("TextLabel")
 SubTitleGears.Size = UDim2.new(0.92, 0, 0, 16)
-SubTitleSearsBG = SubTitleGears
 SubTitleGears.BackgroundTransparency = 1
 SubTitleGears.Font = Enum.Font.GothamBold
 SubTitleGears.Text = "--- ตัวเลือกซื้ออุปกรณ์/เกียร์ ---"
@@ -1238,5 +1237,5 @@ task.spawn(function()
         BackgroundTransparency = 0
     })
     
-    expandTween::Play()
+    expandTween:Play()
 end)
