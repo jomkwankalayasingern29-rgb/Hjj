@@ -769,10 +769,10 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (รองรับการใช้งานทั้งแบบ String และ unpack Table แบบยืดหยุ่น)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อสินค้า (รองรับการส่งค่าผ่าน unpack แบบเดียวกับตัวอย่างของคุณ)
 local function buyItemSmart(candidates)
-    local reqRemote = ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
-        or ReplicatedStorage:FindFirstChild("RequestPurchase") 
+    local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") 
+        or ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
         or ReplicatedStorage:FindFirstChild("PurchaseItem") 
         or ReplicatedStorage:FindFirstChild("BuyItem")
         
@@ -781,17 +781,12 @@ local function buyItemSmart(candidates)
     for _, itemName in ipairs(candidates) do
         local success = false
         pcall(function()
+            local args = {itemName}
             if reqRemote:IsA("RemoteFunction") then
-                local ok = pcall(function() reqRemote:InvokeServer(itemName) end)
-                if not ok then
-                    reqRemote:InvokeServer(unpack({itemName}))
-                end
+                reqRemote:InvokeServer(unpack(args))
                 success = true
             elseif reqRemote:IsA("RemoteEvent") then
-                local ok = pcall(function() reqRemote:FireServer(itemName) end)
-                if not ok then
-                    reqRemote:FireServer(unpack({itemName}))
-                end
+                reqRemote:FireServer(unpack(args))
                 success = true
             end
         end)
@@ -1096,7 +1091,7 @@ end
 
 createCategoryButton("เมนูหลัก")
 createCategoryButton("ช่วยเล่น")
-createCategoryButton("ออโต้")
+createCategoryButton("อоโต้")
 createCategoryButton("ขั้นต่ำน้ำหนัก")
 
 switchTab("เมนูหลัก")
