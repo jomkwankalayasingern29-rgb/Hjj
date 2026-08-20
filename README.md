@@ -5,7 +5,6 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -62,10 +61,6 @@ local weightFilterEnabled = false
 local weightConditionMode = "greater" -- "greater" = สูงกว่า, "less" = ต่ำกว่า
 local targetWeightValue = 0
 local selectedWeightFruits = {}
-
--- ==================== ระบบ ESP ผลไม้ ====================
-local fruitESPEnabled = false
-local activeESPTags = {}
 
 -- ==================== ระบบ Cache ProximityPrompt แก้ปัญหาแล็ก ====================
 local cachedPrompts = {}
@@ -1062,120 +1057,6 @@ for _, seedData in ipairs(seedList) do
     weightFruitToggles[seedData.key] = tObj
 end
 
--- 5. หมวด "ESP" (หมวดใหม่สำหรับแสดงผลชื่อและราคาผลไม้)
-local ESPContainer = createContainer("ESP")
-
--- ฟังก์ชันค้นหาราคาผลไม้จาก Model หรือ Prompt
-local function getFruitPrice(part)
-    local parentModel = part:FindFirstAncestorOfClass("Model") or part.Parent
-    if not parentModel then return "0" end
-
-    -- ค้นหาค่า Price หรือ Value หรือ ValueNumber ใน Model
-    local priceVal = parentModel:FindFirstChild("Price") or parentModel:FindFirstChild("price") or parentModel:FindFirstChild("Cost") or part:FindFirstChild("Price")
-    if priceVal then
-        if priceVal:IsA("NumberValue") or priceVal:IsA("IntValue") then
-            return tostring(priceVal.Value)
-        elseif priceVal:IsA("StringValue") then
-            return priceVal.Value
-        end
-    end
-
-    -- ค้นหาจาก TextLabel ใน BillboardGui / SurfaceGui
-    for _, child in ipairs(parentModel:GetDescendants()) do
-        if child:IsA("TextLabel") or child:IsA("SurfaceGui") or child:IsA("BillboardGui") then
-            local text = child:IsA("TextLabel") and child.Text or ""
-            if text == "" and child:FindFirstChildWhichIsA("TextLabel") then
-                text = child:FindFirstChildWhichIsA("TextLabel").Text
-            end
-            
-            local priceNum = text:match("[%d,]+")
-            if priceNum and (string.find(string.lower(text), "$") or string.find(string.lower(text), "price") or string.find(text, "ราคา")) then
-                return priceNum
-            end
-        end
-    end
-
-    return "N/A"
-end
-
--- ฟังก์ชันสร้าง BillboardGui สำหรับ ESP
-local function addESPToPrompt(prompt)
-    local part = prompt.Parent
-    if not part or not part:IsA("BasePart") then return end
-
-    -- เช็คว่ามี ESP อยู่แล้วหรือยัง
-    if part:FindFirstChild("FruitESPBillboard") then return end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "FruitESPBillboard"
-    billboard.Size = UDim2.new(0, 100, 0, 40)
-    billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Enabled = fruitESPEnabled
-    billboard.Parent = part
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Name = "ESPText"
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 10
-    textLabel.TextColor3 = Color3.fromRGB(0, 255, 128)
-    textLabel.TextStrokeTransparency = 0.5
-    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    textLabel.Parent = billboard
-
-    -- อัปเดตข้อความ "ชื่อผลไม้[ราคา]"
-    local connection
-    connection = RunService.RenderStepped:Connect(function()
-        if not billboard or not billboard.Parent or not prompt.Parent then
-            if connection then connection:Disconnect() end
-            return
-        end
-
-        billboard.Enabled = fruitESPEnabled
-        if fruitESPEnabled then
-            local fruitName = prompt.ObjectText ~= "" and prompt.ObjectText or part.Name
-            local price = getFruitPrice(part)
-            textLabel.Text = string.format("%s [%s]", fruitName, price)
-        end
-    end)
-
-    table.insert(activeESPTags, {Billboard = billboard, Connection = connection})
-end
-
--- สลับเปิด/ปิด ESP ผลไม้
-createToggle(ESPContainer, "เปิด ESP ผลไม้", function(state)
-    fruitESPEnabled = state
-    if fruitESPEnabled then
-        -- เพิ่ม ESP ให้กับ ProximityPrompt ที่แคชไว้ทั้งหมด
-        for _, prompt in ipairs(cachedPrompts) do
-            pcall(function()
-                addESPToPrompt(prompt)
-            end)
-        end
-    else
-        -- ซ่อน ESP ทั้งหมด
-        for _, espData in ipairs(activeESPTags) do
-            if espData.Billboard then
-                espData.Billboard.Enabled = false
-            end
-        end
-    end
-end)
-
--- ผูกเข้ากับ Prompt ที่เพิ่มเข้ามาใหม่ในอนาคต
-Workspace.DescendantAdded:Connect(function(v)
-    registerPrompt(v)
-    if v:IsA("ProximityPrompt") and fruitESPEnabled then
-        task.delay(0.5, function()
-            pcall(function()
-                addESPToPrompt(v)
-            end)
-        end)
-    end
-end)
-
 -- ฟังก์ชันสลับหมวดหมู่
 local function switchTab(tabName)
     for name, container in pairs(FunctionContainers) do
@@ -1208,9 +1089,7 @@ createCategoryButton("เมนูหลัก")
 createCategoryButton("ช่วยเล่น")
 createCategoryButton("ออโต้")
 createCategoryButton("ขั้นต่ำน้ำหนัก")
-createCategoryButton("ESP")
 
--- เปิดหน้าแรกตั้งต้นที่ "เมนูหลัก"
 switchTab("เมนูหลัก")
 
 -- ==================== ลำดับการทำงาน (Loading & Animation) ====================
