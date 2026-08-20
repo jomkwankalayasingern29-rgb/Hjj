@@ -480,9 +480,11 @@ DiscordBtnStroke.Thickness = 0.8
 DiscordBtnStroke.Parent = DiscordBtn
 
 DiscordBtn.MouseButton1Click:Connect(function()
-    if setclipboard then
-        setclipboard("https://discord.gg/Ugssja4wqQ")
-    end
+    pcall(function()
+        if setclipboard then
+            setclipboard("https://discord.gg/Ugssja4wqQ")
+        end
+    end)
 end)
 
 -- --- ส่วนตั้งค่าความเร็วของระบบ ---
@@ -611,7 +613,10 @@ SellBtnCorner.Parent = SellBtn
 
 SellBtn.MouseButton1Click:Connect(function()
     pcall(function()
-        ReplicatedStorage:WaitForChild("RequestSell"):InvokeServer("sellAll")
+        local remote = ReplicatedStorage:FindFirstChild("RequestSell")
+        if remote then
+            remote:InvokeServer("sellAll")
+        end
     end)
 end)
 
@@ -623,7 +628,10 @@ createToggle(HelpPlayContainer, "ขายอัตโนมัติ", function
         task.spawn(function()
             while autoSellEnabled do
                 pcall(function()
-                    ReplicatedStorage:WaitForChild("RequestSell"):InvokeServer("sellAll")
+                    local remote = ReplicatedStorage:FindFirstChild("RequestSell")
+                    if remote then
+                        remote:InvokeServer("sellAll")
+                    end
                 end)
                 task.wait(sellDelay)
             end
@@ -761,7 +769,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (ลองชื่อเดิมก่อน ยิงตรงเป้า)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม
 local function buyItemSmart(candidates)
     local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
     if not reqRemote then return end
@@ -777,12 +785,11 @@ local function buyItemSmart(candidates)
                 success = true
             end
         end)
-        -- ถ้ายิงสำเร็จแล้ว หยุดลองชื่อถัดไปทันที
         if success then break end
     end
 end
 
--- 3. หมวด "ออโต้" (ซื้อเมล็ดพันธุ์ + ซื้อเกียร์อัตโนมัติ)
+-- 3. หมวด "ออโต้"
 local AutoContainer = createContainer("ออโต้")
 
 local selectedSeeds = {}
@@ -790,7 +797,6 @@ local seedToggles = {}
 local isUpdatingAllSeeds = false
 local autoBuyEnabled = false
 
--- สวิตช์ซื้อเมล็ดอัตโนมัติรวม
 createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัติ", function(state)
     autoBuyEnabled = state
     if autoBuyEnabled then
@@ -822,7 +828,7 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
--- รายชื่อเมล็ดพันธุ์ภาษาอังกฤษ (ชื่อเดิมนำหน้าเสมอ เพื่อให้ยิงตรงเป้า)
+-- รายชื่อเมล็ดพันธุ์
 local seedList = {
     {key = "Carrot", label = "Carrot (แครอท)", candidates = {"Carrot", "CarrotSeed", "Carrot Seed"}},
     {key = "Miki", label = "Miki Seed", candidates = {"Miki", "MikiSeed", "Miki Seed"}},
@@ -982,7 +988,7 @@ for _, gearData in ipairs(gearList) do
     gearToggles[gearData.key] = tObj
 end
 
--- 4. หมวด "ขั้นต่ำน้ำหนัก" (Weight Filter Settings)
+-- 4. หมวด "ขั้นต่ำน้ำหนัก"
 local WeightContainer = createContainer("ขั้นต่ำน้ำหนัก")
 
 createToggle(WeightContainer, "เปิดใช้งานกรองน้ำหนัก", function(state)
@@ -1006,7 +1012,6 @@ WeightSubTitle.TextColor3 = Color3.fromRGB(0, 162, 255)
 WeightSubTitle.TextSize = 8
 WeightSubTitle.Parent = WeightContainer
 
--- ปุ่ม: เลือกผลไม้ทั้งหมด
 local weightFruitToggles = {}
 local isUpdatingAllWeightFruits = false
 local selectAllWeightToggleObj = nil
@@ -1041,7 +1046,6 @@ selectAllWeightToggleObj = createToggle(WeightContainer, "เลือกผล�
     isUpdatingAllWeightFruits = false
 end)
 
--- รายการผลไม้สำหรับเลือกกรองน้ำหนัก
 for _, seedData in ipairs(seedList) do
     selectedWeightFruits[seedData.key] = false
     local tObj = createToggle(WeightContainer, seedData.label, function(state)
@@ -1086,12 +1090,10 @@ createCategoryButton("ช่วยเล่น")
 createCategoryButton("ออโต้")
 createCategoryButton("ขั้นต่ำน้ำหนัก")
 
--- เปิดหน้าแรกตั้งต้นที่ "เมนูหลัก"
 switchTab("เมนูหลัก")
 
 -- ==================== ลำดับการทำงาน (Loading & Animation) ====================
 task.spawn(function()
-    -- 1. กำลังโหลด... 2 วินาที
     local count = 0
     while count < 6 do
         LoadText.Text = "กำลังโหลด" .. string.rep(".", (count % 4))
@@ -1099,21 +1101,19 @@ task.spawn(function()
         count += 1
     end
     
-    -- 2. ดาวน์โหลดเสร็จแล้ว 1 วินาที
     LoadText.Text = "ดาวน์โหลดเสร็จแล้ว"
     task.wait(1)
     
-    -- 3. คัดลอกลิงก์อัตโนมัติ
     LoadText.Text = "คัดลอกลิงก์ Discord เรียบร้อย"
-    if setclipboard then
-        setclipboard("https://discord.gg/Ugssja4wqQ")
-    end
+    pcall(function()
+        if setclipboard then
+            setclipboard("https://discord.gg/Ugssja4wqQ")
+        end
+    end)
     task.wait(1)
     
-    -- 4. ลบหน้าจอโหลดทิ้ง
     LoadFrame:Destroy()
     
-    -- 5. เล่น Animation แสดง UI หลัก
     MainFrame.Visible = true
     MainFrame.Size = UDim2.new(0, 260, 0, 140)
     
