@@ -761,19 +761,24 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันส่งคำสั่งซื้อไอเทมแบบ Smart Retry (รองรับชื่อหลายรูปแบบ)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (ลองชื่อเดิมก่อน ยิงตรงเป้า)
 local function buyItemSmart(candidates)
-    local requestRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
-    if not requestRemote then return end
+    local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
+    if not reqRemote then return end
 
     for _, itemName in ipairs(candidates) do
+        local success = false
         pcall(function()
-            if requestRemote:IsA("RemoteFunction") then
-                requestRemote:InvokeServer(itemName)
-            elseif requestRemote:IsA("RemoteEvent") then
-                requestRemote:FireServer(itemName)
+            if reqRemote:IsA("RemoteFunction") then
+                reqRemote:InvokeServer(itemName)
+                success = true
+            elseif reqRemote:IsA("RemoteEvent") then
+                reqRemote:FireServer(itemName)
+                success = true
             end
         end)
+        -- ถ้ายิงสำเร็จแล้ว หยุดลองชื่อถัดไปทันที
+        if success then break end
     end
 end
 
@@ -794,7 +799,6 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
                 for seedDataKey, isSelected in pairs(selectedSeeds) do
                     if not autoBuyEnabled then break end
                     if isSelected then
-                        -- ดึงลิสต์ชื่อที่เป็นไปได้เพื่อยิงสั่งซื้อ
                         for _, seedData in ipairs(seedList) do
                             if seedData.key == seedDataKey then
                                 buyItemSmart(seedData.candidates)
@@ -818,7 +822,7 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
--- รายชื่อเมล็ดพันธุ์พร้อมชุดชื่อ candidate ป้องกันเกมสะกดไม่เหมือนกัน
+-- รายชื่อเมล็ดพันธุ์ภาษาอังกฤษ (ชื่อเดิมนำหน้าเสมอ เพื่อให้ยิงตรงเป้า)
 local seedList = {
     {key = "Carrot", label = "Carrot (แครอท)", candidates = {"Carrot", "CarrotSeed", "Carrot Seed"}},
     {key = "Miki", label = "Miki Seed", candidates = {"Miki", "MikiSeed", "Miki Seed"}},
@@ -834,16 +838,16 @@ local seedList = {
     {key = "Eggkapok", label = "Eggkapok Seed", candidates = {"Eggkapok", "EggkapokSeed", "Eggkapok Seed"}},
     {key = "MrGreed", label = "MrGreed Seed", candidates = {"MrGreed", "MrGreedSeed", "MrGreed Seed"}},
     {key = "OldMhoy", label = "OldMhoy Seed", candidates = {"OldMhoy", "OldMhoySeed", "OldMhoy Seed"}},
-    {key = "OldMhoyHair", label = "OldMhoyHair Seed (น้ำ)", candidates = {"OldMhoyHair", "OldMhoyHairSeed", "OldMhoyWaterSeed", "OldMhoyWater Seed"}},
+    {key = "OldMhoyHair", label = "OldMhoyHair Seed (น้ำ)", candidates = {"OldMhoyHair", "OldMhoyWaterSeed", "OldMhoyHairSeed"}},
     {key = "YoungMhoy", label = "YoungMhoy Seed", candidates = {"YoungMhoy", "YoungMhoySeed", "YoungMhoy Seed"}},
-    {key = "YoungMhoyHair", label = "YoungMhoyHair Seed (น้ำ)", candidates = {"YoungMhoyHair", "YoungMhoyHairSeed", "YoungMhoyWaterSeed", "YoungMhoyWater Seed"}},
+    {key = "YoungMhoyHair", label = "YoungMhoyHair Seed (น้ำ)", candidates = {"YoungMhoyHair", "YoungMhoyWaterSeed", "YoungMhoyHairSeed"}},
     {key = "Ong", label = "Ong Seed", candidates = {"Ong", "OngSeed", "Ong Seed"}},
     {key = "Budha", label = "Budha Seed", candidates = {"Budha", "BudhaSeed", "Budha Seed"}},
-    {key = "NorTad", label = "NorTad Seed", candidates = {"NorTad", "NorTadSeed", "NorTadWaterSeed", "NorTad Seed"}},
+    {key = "NorTad", label = "NorTad Seed", candidates = {"NorTad", "NorTadSeed", "NorTadWaterSeed"}},
     {key = "RobuxTree", label = "RobuxTree", candidates = {"RobuxTree", "RobuxTreeSeed", "Robux Tree"}},
-    {key = "Glaed", label = "Glaed (เกล็ด)", candidates = {"Glaed", "GlaedSeed", "GlaedWaterSeed", "Glaed Water Seed"}},
-    {key = "GoldFlower", label = "GoldFlower (ดอกไม้ทองคำ)", candidates = {"GoldFlower", "GoldFlowerSeed", "GoldFlowerWaterSeed", "Gold Flower Seed"}},
-    {key = "Kee", label = "Kee Seed", candidates = {"Kee", "KeeSeed", "KeeWaterSeed", "Kee Water Seed"}},
+    {key = "Glaed", label = "Glaed (เกล็ด)", candidates = {"Glaed", "GlaedSeed", "GlaedWaterSeed"}},
+    {key = "GoldFlower", label = "GoldFlower (ดอกไม้ทองคำ)", candidates = {"GoldFlower", "GoldFlowerSeed", "GoldFlowerWaterSeed"}},
+    {key = "Kee", label = "Kee Seed", candidates = {"Kee", "KeeSeed", "KeeWaterSeed"}},
     {key = "PCX150", label = "PCX150 Seed", candidates = {"PCX150", "PCX150Seed", "PCX150 Seed"}},
     {key = "MysteryStickTree", label = "MysteryStickTree Seed", candidates = {"MysteryStickTree", "MysteryStickTreeSeed", "MysteryStickTree Seed"}}
 }
