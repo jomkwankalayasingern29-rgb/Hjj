@@ -769,10 +769,10 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อสินค้า (ใช้ unpack args ตามที่คุณต้องการ)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (รองรับการใช้งานทั้งแบบ String และ unpack Table แบบยืดหยุ่น)
 local function buyItemSmart(candidates)
-    local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") 
-        or ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
+    local reqRemote = ReplicatedStorage:FindFirstChild("RequestGearPurchase") 
+        or ReplicatedStorage:FindFirstChild("RequestPurchase") 
         or ReplicatedStorage:FindFirstChild("PurchaseItem") 
         or ReplicatedStorage:FindFirstChild("BuyItem")
         
@@ -781,12 +781,17 @@ local function buyItemSmart(candidates)
     for _, itemName in ipairs(candidates) do
         local success = false
         pcall(function()
-            local args = {itemName}
             if reqRemote:IsA("RemoteFunction") then
-                reqRemote:InvokeServer(unpack(args))
+                local ok = pcall(function() reqRemote:InvokeServer(itemName) end)
+                if not ok then
+                    reqRemote:InvokeServer(unpack({itemName}))
+                end
                 success = true
             elseif reqRemote:IsA("RemoteEvent") then
-                reqRemote:FireServer(unpack(args))
+                local ok = pcall(function() reqRemote:FireServer(itemName) end)
+                if not ok then
+                    reqRemote:FireServer(unpack({itemName}))
+                end
                 success = true
             end
         end)
@@ -833,7 +838,7 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
--- รายชื่อเมล็ดพันธุ์ทั้งหมด
+-- รายชื่อเมล็ดพันธุ์
 local seedList = {
     {key = "Carrot", label = "Carrot (แครอท)", candidates = {"Carrot", "CarrotSeed", "Carrot Seed"}},
     {key = "Miki", label = "Miki Seed", candidates = {"Miki", "MikiSeed", "Miki Seed"}},
