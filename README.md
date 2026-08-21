@@ -644,6 +644,9 @@ local function getFruitWeight(part)
     local parentModel = part:FindFirstAncestorOfClass("Model") or part.Parent
     if not parentModel then return nil end
 
+    local attrWeight = parentModel:GetAttribute("Weight") or parentModel:GetAttribute("weight") or part:GetAttribute("Weight")
+    if type(attrWeight) == "number" then return attrWeight end
+
     local weightVal = parentModel:FindFirstChild("Weight") or parentModel:FindFirstChild("weight") or part:FindFirstChild("Weight")
     if weightVal then
         if weightVal:IsA("NumberValue") or weightVal:IsA("IntValue") then
@@ -769,7 +772,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทมแบบ unpack(args) ที่แก้ไขให้ถูกต้องตามหลัก Roblox Remote
+-- ==================== ฟังก์ชันซื้อไอเทมที่แก้ไขให้ถูกต้อง (RequestPurchase) ====================
 local function buyItemSmart(itemName)
     local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
     if not reqRemote then return end
