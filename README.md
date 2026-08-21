@@ -772,13 +772,20 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- ==================== ฟังก์ชันซื้อไอเทม (โครงสร้างตามที่คุณต้องการเป๊ะๆ) ====================
+-- ==================== ฟังก์ชันซื้อไอเทม (ตรวจสอบความถูกต้องของ Remote Server) ====================
 local function buyItemSmart(itemName)
     pcall(function()
-        local args = {
-            itemName
-        }
-        game:GetService("ReplicatedStorage"):WaitForChild("RequestPurchase"):InvokeServer(unpack(args))
+        local reqRemote = ReplicatedStorage:WaitForChild("RequestPurchase", 5)
+        if reqRemote then
+            local args = {
+                itemName
+            }
+            if reqRemote:IsA("RemoteFunction") then
+                reqRemote:InvokeServer(unpack(args))
+            elseif reqRemote:IsA("RemoteEvent") then
+                reqRemote:FireServer(unpack(args))
+            end
+        end
     end)
 end
 
