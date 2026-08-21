@@ -769,26 +769,22 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (วนลูปตาม candidates ภาษาอังกฤษ)
-local function buyItemSmart(candidates)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทมแบบ unpack(args) ตามที่คุณต้องการ
+local function buyItemSmart(itemName)
     local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
     if not reqRemote then return end
 
-    for _, itemName in ipairs(candidates) do
-        local success = false
-        pcall(function()
-            if reqRemote:IsA("RemoteFunction") then
-                reqRemote:InvokeServer(itemName)
-                success = true
-            elseif reqRemote:IsA("RemoteEvent") then
-                reqRemote:FireServer(itemName)
-                success = true
-            end
-        end)
-        if success then 
-            break 
+    local args = {
+        itemName
+    }
+
+    pcall(function()
+        if reqRemote:IsA("RemoteFunction") then
+            reqRemote:InvokeServer(unpack(args))
+        elseif reqRemote:IsA("RemoteEvent") then
+            reqRemote:FireServer(unpack(args))
         end
-    end
+    end)
 end
 
 -- 3. หมวด "ออโต้"
@@ -809,7 +805,7 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
                     if isSelected then
                         for _, seedData in ipairs(seedList) do
                             if seedData.key == seedDataKey then
-                                buyItemSmart(seedData.candidates)
+                                buyItemSmart(seedData.itemName)
                                 break
                             end
                         end
@@ -830,32 +826,32 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
--- รายชื่อเมล็ดพันธุ์ (ใช้ชื่อภาษาอังกฤษทั้งหมดตามโค้ดต้นฉบับที่คุณต้องการ พร้อม candidates ครบถ้วน)
+-- รายชื่อเมล็ดพันธุ์ (ใช้ชื่อแบบติดกันไม่มีเว้นวรรคตามที่คุณต้องการ)
 local seedList = {
-    {key = "Carrot", label = "Carrot Seed", candidates = {"Carrot", "CarrotSeed", "Carrot Seed"}},
-    {key = "Miki", label = "Miki Seed", candidates = {"Miki", "MikiSeed", "Miki Seed"}},
-    {key = "MedTrad", label = "MedTrad Seed", candidates = {"MedTrad", "MedTradSeed", "MedTrad Seed"}},
-    {key = "EmoeHair", label = "EmoeHair Seed", candidates = {"EmoeHair", "EmoeHairSeed", "EmoeHair Seed"}},
-    {key = "Siw", label = "Siw Seed", candidates = {"Siw", "SiwSeed", "Siw Seed"}},
-    {key = "Nom", label = "Nom Seed", candidates = {"Nom", "NomSeed", "Nom Seed"}},
-    {key = "Car", label = "Car Seed", candidates = {"Car", "CarSeed", "Car Seed"}},
-    {key = "House", label = "House Seed", candidates = {"House", "HouseSeed", "House Seed"}},
-    {key = "MysteryRocket", label = "MysteryRocket Seed", candidates = {"MysteryRocket", "MysteryRocketSeed", "MysteryRocket Seed"}},
-    {key = "MysteryStick", label = "MysteryStick Seed", candidates = {"MysteryStick", "MysteryStickSeed", "MysteryStick Seed"}},
-    {key = "Bamboo", label = "Bamboo Seed", candidates = {"Bamboo", "BambooSeed", "Bamboo Seed"}},
-    {key = "Eggkapok", label = "Eggkapok Seed", candidates = {"Eggkapok", "EggkapokSeed", "Eggkapok Seed"}},
-    {key = "MrGreed", label = "MrGreed Seed", candidates = {"MrGreed", "MrGreedSeed", "MrGreed Seed"}},
-    {key = "OldMhoy", label = "OldMhoy Water Seed", candidates = {"OldMhoyHair", "OldMhoyWaterSeed", "OldMhoyHairSeed", "OldMhoy"}},
-    {key = "YoungMhoy", label = "YoungMhoy Water Seed", candidates = {"YoungMhoyHair", "YoungMhoyWaterSeed", "YoungMhoyHairSeed", "YoungMhoy"}},
-    {key = "Ong", label = "Ong Seed", candidates = {"Ong", "OngSeed", "Ong Seed"}},
-    {key = "Budha", label = "Budha Seed", candidates = {"Budha", "BudhaSeed", "Budha Seed"}},
-    {key = "NorTad", label = "NorTad Water Seed", candidates = {"NorTadSeed", "NorTadWaterSeed", "NorTad"}},
-    {key = "RobuxTree", label = "RobuxTree", candidates = {"RobuxTree", "RobuxTreeSeed", "Robux Tree"}},
-    {key = "Glaed", label = "Glaed Water Seed", candidates = {"Glaed", "GlaedSeed", "GlaedWaterSeed"}},
-    {key = "GoldFlower", label = "GoldFlower Water Seed", candidates = {"GoldFlower", "GoldFlowerSeed", "GoldFlowerWaterSeed"}},
-    {key = "Kee", label = "Kee Water Seed", candidates = {"Kee", "KeeSeed", "KeeWaterSeed"}},
-    {key = "PCX150", label = "PCX150 Seed", candidates = {"PCX150", "PCX150Seed", "PCX150 Seed"}},
-    {key = "MysteryStickTree", label = "MysteryStickTree Seed", candidates = {"MysteryStickTree", "MysteryStickTreeSeed", "MysteryStickTree Seed"}}
+    {key = "Carrot", label = "Carrot", itemName = "Carrot"},
+    {key = "Miki", label = "Miki", itemName = "Miki"},
+    {key = "MedTrad", label = "MedTrad", itemName = "MedTrad"},
+    {key = "EmoeHair", label = "EmoeHair", itemName = "EmoeHair"},
+    {key = "Siw", label = "Siw", itemName = "Siw"},
+    {key = "Nom", label = "Nom", itemName = "Nom"},
+    {key = "Car", label = "Car", itemName = "Car"},
+    {key = "House", label = "House", itemName = "House"},
+    {key = "MysteryRocket", label = "MysteryRocket", itemName = "MysteryRocket"},
+    {key = "MysteryStick", label = "MysteryStick", itemName = "MysteryStick"},
+    {key = "Bamboo", label = "Bamboo", itemName = "Bamboo"},
+    {key = "Eggkapok", label = "Eggkapok", itemName = "Eggkapok"},
+    {key = "MrGreed", label = "MrGreed", itemName = "MrGreed"},
+    {key = "OldMhoyHair", label = "OldMhoyHair", itemName = "OldMhoyHair"},
+    {key = "YoungMhoyHair", label = "YoungMhoyHair", itemName = "YoungMhoyHair"},
+    {key = "Ong", label = "Ong", itemName = "Ong"},
+    {key = "Budha", label = "Budha", itemName = "Budha"},
+    {key = "NorTad", label = "NorTad", itemName = "NorTad"},
+    {key = "RobuxTree", label = "RobuxTree", itemName = "RobuxTree"},
+    {key = "Glaed", label = "Glaed", itemName = "Glaed"},
+    {key = "GoldFlower", label = "GoldFlower", itemName = "GoldFlower"},
+    {key = "Kee", label = "Kee", itemName = "Kee"},
+    {key = "PCX150", label = "PCX150", itemName = "PCX150"},
+    {key = "MysteryStickTree", label = "MysteryStickTree", itemName = "MysteryStickTree"}
 }
 
 local buyAllSeedsToggleObj = nil
@@ -926,7 +922,7 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
                     if isSelected then
                         for _, gearData in ipairs(gearList) do
                             if gearData.key == gearKey then
-                                buyItemSmart(gearData.candidates)
+                                buyItemSmart(gearData.itemName)
                                 break
                             end
                         end
@@ -939,10 +935,10 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
 end)
 
 local gearList = {
-    {key = "PlantDestroyer", label = "Plant Destroyer", candidates = {"PlantDestroyer", "Plant Destroyer", "PlantDestroyerGear"}},
-    {key = "PlantMover", label = "Plant Mover Gear", candidates = {"PlantMover", "Plant Mover", "PlantMoverGear"}},
-    {key = "FartGear", label = "Fart Gear", candidates = {"FartGear", "Fart Gear", "FartGearGear"}},
-    {key = "SprayWater", label = "Water Spray", candidates = {"SprayWater", "Water Spray", "WaterSpray"}}
+    {key = "PlantDestroyer", label = "PlantDestroyer", itemName = "PlantDestroyer"},
+    {key = "PlantMover", label = "PlantMover", itemName = "PlantMover"},
+    {key = "FartGear", label = "FartGear", itemName = "FartGear"},
+    {key = "SprayWater", label = "SprayWater", itemName = "SprayWater"}
 }
 
 local buyAllGearsToggleObj = nil
@@ -1087,7 +1083,7 @@ end
 
 createCategoryButton("เมนูหลัก")
 createCategoryButton("ช่วยเล่น")
-createCategoryButton("ออโต้")
+createCategoryButton("อ0โต้")
 createCategoryButton("ขั้นต่ำน้ำหนัก")
 
 switchTab("เมนูหลัก")
