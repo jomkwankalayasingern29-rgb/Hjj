@@ -772,7 +772,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- ==================== ฟังก์ชันซื้อไอเทม (แก้ไขให้ตรงตามรูปแบบ args ที่ต้องการ) ====================
+-- ==================== ฟังก์ชันซื้อไอเทม (ส่งชื่อไอเทมเดี่ยวๆ ตรงตามฟอร์แมต) ====================
 local function buyItemSmart(itemName)
     pcall(function()
         local args = {
@@ -795,18 +795,15 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
     if autoBuyEnabled then
         task.spawn(function()
             while autoBuyEnabled do
-                for seedDataKey, isSelected in pairs(selectedSeeds) do
+                -- วนลูปซื้อเมล็ดทุกตัวที่เปิดใช้งาน (ติ๊กเลือกไว้)
+                for _, seedData in ipairs(seedList) do
                     if not autoBuyEnabled then break end
-                    if isSelected then
-                        for _, seedData in ipairs(seedList) do
-                            if seedData.key == seedDataKey then
-                                buyItemSmart(seedData.itemName)
-                                break
-                            end
-                        end
+                    if selectedSeeds[seedData.key] then
+                        buyItemSmart(seedData.itemName)
+                        task.wait(buyDelay) -- หน่วงเวลาระหว่างซื้อแต่ละชิ้น
                     end
                 end
-                task.wait(buyDelay)
+                task.wait(0.1)
             end
         end)
     end
@@ -912,18 +909,15 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
     if autoBuyGearsEnabled then
         task.spawn(function()
             while autoBuyGearsEnabled do
-                for gearKey, isSelected in pairs(selectedGears) do
+                -- วนลูปซื้อเกียร์ทุกตัวที่เปิดใช้งาน
+                for _, gearData in ipairs(gearList) do
                     if not autoBuyGearsEnabled then break end
-                    if isSelected then
-                        for _, gearData in ipairs(gearList) do
-                            if gearData.key == gearKey then
-                                buyItemSmart(gearData.itemName)
-                                break
-                            end
-                        end
+                    if selectedGears[gearData.key] then
+                        buyItemSmart(gearData.itemName)
+                        task.wait(buyDelay)
                     end
                 end
-                task.wait(buyDelay)
+                task.wait(0.1)
             end
         end)
     end
@@ -1057,7 +1051,8 @@ end
 
 -- สร้างปุ่มเลือกหมวดหมู่ทางซ้าย
 local function createCategoryButton(name)
-    local btn = Instance.new("TextButton")
+    valBtn = Instance.new("TextButton")
+    local btn = valBtn
     btn.Size = UDim2.new(0.9, 0, 0, 22)
     btn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     btn.BorderSizePixel = 0
@@ -1078,7 +1073,7 @@ end
 
 createCategoryButton("เมนูหลัก")
 createCategoryButton("ช่วยเล่น")
-createCategoryButton("ออโต้")
+createCategoryButton("อоโต้")
 createCategoryButton("ขั้นต่ำน้ำหนัก")
 
 switchTab("เมนูหลัก")
@@ -1108,8 +1103,8 @@ task.spawn(function()
     MainFrame.Visible = true
     MainFrame.Size = UDim2.new(0, 260, 0, 140)
     
-    local info = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local expandTween = TweenService:Create(MainFrame, info, {
+    ListInfo = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local expandTween = TweenService:Create(MainFrame, ListInfo, {
         Size = UDim2.new(0, 360, 0, 220),
         BackgroundTransparency = 0
     })
