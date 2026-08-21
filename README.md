@@ -769,7 +769,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (วนลูป 3 รูปแบบตามที่กำหนด)
 local function buyItemSmart(candidates)
     local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
     if not reqRemote then return end
@@ -785,7 +785,9 @@ local function buyItemSmart(candidates)
                 success = true
             end
         end)
-        if success then break end
+        if success then 
+            break -- ถ้ารันสำเร็จแบบแรกแล้ว จะไม่รันแบบถัดไป (ถ้าไม่สำเร็จจะวนรันตัวถัดไปจนครบ)
+        end
     end
 end
 
@@ -828,7 +830,7 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
--- รายชื่อเมล็ดพันธุ์
+-- รายชื่อเมล็ดพันธุ์ (อัปเดต candidates ให้ครอบคลุมทั้ง 3 รูปแบบภาษาอังกฤษโดยอัตโนมัติ)
 local seedList = {
     {key = "Carrot", label = "Carrot (แครอท)", candidates = {"Carrot", "CarrotSeed", "Carrot Seed"}},
     {key = "Miki", label = "Miki Seed", candidates = {"Miki", "MikiSeed", "Miki Seed"}},
@@ -941,7 +943,7 @@ end)
 local gearList = {
     {key = "PlantDestroyer", label = "อุปกรณ์กำจัดพืชผล", candidates = {"PlantDestroyer", "Plant Destroyer", "PlantDestroyerGear"}},
     {key = "PlantMover", label = "Plant Mover Gear", candidates = {"PlantMover", "Plant Mover", "PlantMoverGear"}},
-    {key = "FartGear", label = "Fart Gear (อุปกรณ์เร่ง)", candidates = {"FartGear", "Fart Gear"}},
+    {key = "FartGear", label = "Fart Gear (อุปกรณ์เร่ง)", candidates = {"FartGear", "Fart Gear", "FartGearGear"}},
     {key = "SprayWater", label = "Water Spray (อุปกรณ์รดน้ำ)", candidates = {"SprayWater", "Water Spray", "WaterSpray"}}
 }
 
