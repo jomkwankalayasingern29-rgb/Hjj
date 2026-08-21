@@ -41,7 +41,7 @@ LoadText.Name = "LoadText"
 LoadText.Size = UDim2.new(1, 0, 1, 0)
 LoadText.BackgroundTransparency = 1
 LoadText.Font = Enum.Font.GothamBold
-LoadText.Text = "กำลังโหลด"
+LoadText.Text = "กำลังโหลด..."
 LoadText.TextColor3 = Color3.fromRGB(255, 255, 255)
 LoadText.TextSize = 13
 LoadText.Parent = LoadFrame
@@ -772,21 +772,13 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- ==================== ฟังก์ชันซื้อไอเทมที่แก้ไขให้ถูกต้อง (RequestPurchase) ====================
+-- ==================== ฟังก์ชันซื้อไอเทม (แก้ไขให้ตรงตามรูปแบบ args ที่ต้องการ) ====================
 local function buyItemSmart(itemName)
-    local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
-    if not reqRemote then return end
-
-    local args = {
-        itemName
-    }
-
     pcall(function()
-        if reqRemote:IsA("RemoteFunction") then
-            reqRemote:InvokeServer(unpack(args))
-        elseif reqRemote:IsA("RemoteEvent") then
-            reqRemote:FireServer(unpack(args))
-        end
+        local args = {
+            itemName
+        }
+        game:GetService("ReplicatedStorage"):WaitForChild("RequestPurchase"):InvokeServer(unpack(args))
     end)
 end
 
