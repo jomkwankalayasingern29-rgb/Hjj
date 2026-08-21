@@ -769,7 +769,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (วนลูป 3 รูปแบบตามที่กำหนด)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทม (วนลูปตาม candidates)
 local function buyItemSmart(candidates)
     local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
     if not reqRemote then return end
@@ -786,7 +786,7 @@ local function buyItemSmart(candidates)
             end
         end)
         if success then 
-            break -- ถ้ารันสำเร็จแบบแรกแล้ว จะไม่รันแบบถัดไป (ถ้าไม่สำเร็จจะวนรันตัวถัดไปจนครบ)
+            break 
         end
     end
 end
@@ -830,29 +830,27 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
--- รายชื่อเมล็ดพันธุ์ (อัปเดต candidates ให้ครอบคลุมทั้ง 3 รูปแบบภาษาอังกฤษโดยอัตโนมัติ)
+-- รายชื่อเมล็ดพันธุ์ (อัปเดตชื่อตามรูปภาพจริงในเกม เช่น ชื่อไทย/อังกฤษ และชื่อที่ถูกต้อง)
 local seedList = {
-    {key = "Carrot", label = "Carrot (แครอท)", candidates = {"Carrot", "CarrotSeed", "Carrot Seed"}},
-    {key = "Miki", label = "Miki Seed", candidates = {"Miki", "MikiSeed", "Miki Seed"}},
-    {key = "MedTrad", label = "MedTrad Seed", candidates = {"MedTrad", "MedTradSeed", "MedTrad Seed"}},
-    {key = "EmoeHair", label = "EmoeHair Seed", candidates = {"EmoeHair", "EmoeHairSeed", "EmoeHair Seed"}},
-    {key = "Siw", label = "Siw Seed", candidates = {"Siw", "SiwSeed", "Siw Seed"}},
-    {key = "Nom", label = "Nom Seed", candidates = {"Nom", "NomSeed", "Nom Seed"}},
-    {key = "Car", label = "Car (รถยนต์)", candidates = {"Car", "CarSeed", "Car Seed"}},
-    {key = "House", label = "House (บ้าน)", candidates = {"House", "HouseSeed", "House Seed"}},
-    {key = "MysteryRocket", label = "MysteryRocket Seed", candidates = {"MysteryRocket", "MysteryRocketSeed", "MysteryRocket Seed"}},
-    {key = "MysteryStick", label = "MysteryStick Seed", candidates = {"MysteryStick", "MysteryStickSeed", "MysteryStick Seed"}},
-    {key = "Bamboo", label = "Bamboo (ไม้ไผ่)", candidates = {"Bamboo", "BambooSeed", "Bamboo Seed"}},
-    {key = "Eggkapok", label = "Eggkapok Seed", candidates = {"Eggkapok", "EggkapokSeed", "Eggkapok Seed"}},
-    {key = "MrGreed", label = "MrGreed Seed", candidates = {"MrGreed", "MrGreedSeed", "MrGreed Seed"}},
-    {key = "OldMhoy", label = "OldMhoy Seed", candidates = {"OldMhoy", "OldMhoySeed", "OldMhoy Seed"}},
-    {key = "OldMhoyHair", label = "OldMhoyHair Seed (น้ำ)", candidates = {"OldMhoyHair", "OldMhoyWaterSeed", "OldMhoyHairSeed"}},
-    {key = "YoungMhoy", label = "YoungMhoy Seed", candidates = {"YoungMhoy", "YoungMhoySeed", "YoungMhoy Seed"}},
-    {key = "YoungMhoyHair", label = "YoungMhoyHair Seed (น้ำ)", candidates = {"YoungMhoyHair", "YoungMhoyWaterSeed", "YoungMhoyHairSeed"}},
-    {key = "Ong", label = "Ong Seed", candidates = {"Ong", "OngSeed", "Ong Seed"}},
-    {key = "Budha", label = "Budha Seed", candidates = {"Budha", "BudhaSeed", "Budha Seed"}},
-    {key = "NorTad", label = "NorTad Seed", candidates = {"NorTad", "NorTadSeed", "NorTadWaterSeed"}},
-    {key = "RobuxTree", label = "RobuxTree", candidates = {"RobuxTree", "RobuxTreeSeed", "Robux Tree"}},
+    {key = "Carrot", label = "เมล็ดแครอท (Carrot)", candidates = {"เมล็ดแครอท", "Carrot", "CarrotSeed", "Carrot Seed"}},
+    {key = "Miki", label = "Miki Seed", candidates = {"Miki Seed", "Miki", "MikiSeed"}},
+    {key = "MedTrad", label = "MedTrad Seed", candidates = {"MedTrad Seed", "MedTrad", "MedTradSeed"}},
+    {key = "EmoeHair", label = "EmoeHair Seed", candidates = {"EmoeHair Seed", "EmoeHair", "EmoeHairSeed"}},
+    {key = "Siw", label = "เมล็ด Siw", candidates = {"เมล็ด Siw", "Siw", "SiwSeed", "Siw Seed"}},
+    {key = "Nom", label = "เมล็ด Nom", candidates = {"เมล็ด Nom", "Nom", "NomSeed", "Nom Seed"}},
+    {key = "Car", label = "เมล็ดรถยนต์", candidates = {"เมล็ดรถยนต์", "Car", "CarSeed", "Car Seed"}},
+    {key = "House", label = "เมล็ดบ้าน", candidates = {"เมล็ดบ้าน", "House", "HouseSeed", "House Seed"}},
+    {key = "MysteryRocket", label = "MysteryRocket Seed", candidates = {"MysteryRocket Seed", "MysteryRocket", "MysteryRocketSeed"}},
+    {key = "MysteryStick", label = "MysteryStick Seed", candidates = {"MysteryStick Seed", "MysteryStick", "MysteryStickSeed"}},
+    {key = "Bamboo", label = "เมล็ดต้นไม้ไผ่", candidates = {"เมล็ดต้นไม้ไผ่", "Bamboo", "BambooSeed", "Bamboo Seed"}},
+    {key = "Eggkapok", label = "เมล็ด Eggkapok", candidates = {"เมล็ด Eggkapok", "Eggkapok", "EggkapokSeed", "Eggkapok Seed"}},
+    {key = "MrGreed", label = "เมล็ด MrGreed", candidates = {"เมล็ด MrGreed", "MrGreed", "MrGreedSeed", "MrGreed Seed"}},
+    {key = "OldMhoy", label = "เมล็ดผม OldMhoy (น้ำ)", candidates = {"เมล็ดผม OldMhoy (น้ำ)", "OldMhoyHair", "OldMhoyWaterSeed", "OldMhoyHairSeed", "OldMhoy"}},
+    {key = "YoungMhoy", label = "เมล็ดผม YoungMhoy (น้ำ)", candidates = {"เมล็ดผม YoungMhoy (น้ำ)", "YoungMhoyHair", "YoungMhoyWaterSeed", "YoungMhoyHairSeed", "YoungMhoy"}},
+    {key = "Ong", label = "Ong Seed", candidates = {"Ong Seed", "Ong", "OngSeed"}},
+    {key = "Budha", label = "Budha Seed", candidates = {"Budha Seed", "Budha", "BudhaSeed"}},
+    {key = "NorTad", label = "เมล็ด NorTad (น้ำ)", candidates = {"เมล็ด NorTad (น้ำ)", "NorTad Seed", "NorTad", "NorTadSeed", "NorTadWaterSeed"}},
+    {key = "RobuxTree", label = "(RobuxOnly) RobuxTree", candidates = {"(RobuxOnly) RobuxTree", "RobuxTree", "RobuxTreeSeed", "Robux Tree"}},
     {key = "Glaed", label = "Glaed (เกล็ด)", candidates = {"Glaed", "GlaedSeed", "GlaedWaterSeed"}},
     {key = "GoldFlower", label = "GoldFlower (ดอกไม้ทองคำ)", candidates = {"GoldFlower", "GoldFlowerSeed", "GoldFlowerWaterSeed"}},
     {key = "Kee", label = "Kee Seed", candidates = {"Kee", "KeeSeed", "KeeWaterSeed"}},
@@ -1125,5 +1123,5 @@ task.spawn(function()
         BackgroundTransparency = 0
     })
     
-    expandTween:Play()
+    expandTuplePlay = expandTween:Play()
 end)
