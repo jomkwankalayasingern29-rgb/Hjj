@@ -772,7 +772,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- ==================== ฟังก์ชันซื้อไอเทม (ส่งชื่อไอเทมเดี่ยวๆ ตรงตามฟอร์แมต) ====================
+-- ==================== ฟังก์ชันซื้อไอเทม (args แบบฟอร์แมตที่ถูกต้อง) ====================
 local function buyItemSmart(itemName)
     pcall(function()
         local args = {
@@ -795,12 +795,11 @@ createToggle(AutoContainer, "ซื้อเมล็ดอัตโนมัต
     if autoBuyEnabled then
         task.spawn(function()
             while autoBuyEnabled do
-                -- วนลูปซื้อเมล็ดทุกตัวที่เปิดใช้งาน (ติ๊กเลือกไว้)
                 for _, seedData in ipairs(seedList) do
                     if not autoBuyEnabled then break end
                     if selectedSeeds[seedData.key] then
                         buyItemSmart(seedData.itemName)
-                        task.wait(buyDelay) -- หน่วงเวลาระหว่างซื้อแต่ละชิ้น
+                        task.wait(buyDelay)
                     end
                 end
                 task.wait(0.1)
@@ -909,7 +908,6 @@ createToggle(AutoContainer, "ซื้อเกียร์อัตโนมั
     if autoBuyGearsEnabled then
         task.spawn(function()
             while autoBuyGearsEnabled do
-                -- วนลูปซื้อเกียร์ทุกตัวที่เปิดใช้งาน
                 for _, gearData in ipairs(gearList) do
                     if not autoBuyGearsEnabled then break end
                     if selectedGears[gearData.key] then
@@ -1051,8 +1049,7 @@ end
 
 -- สร้างปุ่มเลือกหมวดหมู่ทางซ้าย
 local function createCategoryButton(name)
-    valBtn = Instance.new("TextButton")
-    local btn = valBtn
+    local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0.9, 0, 0, 22)
     btn.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     btn.BorderSizePixel = 0
@@ -1073,7 +1070,7 @@ end
 
 createCategoryButton("เมนูหลัก")
 createCategoryButton("ช่วยเล่น")
-createCategoryButton("อоโต้")
+createCategoryButton("ออโต้")
 createCategoryButton("ขั้นต่ำน้ำหนัก")
 
 switchTab("เมนูหลัก")
@@ -1103,8 +1100,8 @@ task.spawn(function()
     MainFrame.Visible = true
     MainFrame.Size = UDim2.new(0, 260, 0, 140)
     
-    ListInfo = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local expandTween = TweenService:Create(MainFrame, ListInfo, {
+    local info = TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local expandTween = TweenService:Create(MainFrame, info, {
         Size = UDim2.new(0, 360, 0, 220),
         BackgroundTransparency = 0
     })
