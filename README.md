@@ -772,7 +772,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- ==================== ฟังก์ชันซื้อไอเทม (args แบบฟอร์แมตที่ถูกต้อง) ====================
+-- ==================== ฟังก์ชันซื้อไอเทม (โครงสร้างตามที่คุณต้องการเป๊ะๆ) ====================
 local function buyItemSmart(itemName)
     pcall(function()
         local args = {
