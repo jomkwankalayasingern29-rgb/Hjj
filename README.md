@@ -769,7 +769,7 @@ createToggle(HelpPlayContainer, "เดินเก็บผลไม้ออ�
     end
 end)
 
--- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทมแบบ unpack(args)
+-- Helper: ฟังก์ชันยิงคำสั่งซื้อไอเทมแบบ unpack(args) ที่แก้ไขให้ถูกต้องตามหลัก Roblox Remote
 local function buyItemSmart(itemName)
     local reqRemote = ReplicatedStorage:FindFirstChild("RequestPurchase") or ReplicatedStorage:FindFirstChild("PurchaseItem") or ReplicatedStorage:FindFirstChild("BuyItem")
     if not reqRemote then return end
@@ -826,7 +826,7 @@ SubTitleSeeds.TextColor3 = Color3.fromRGB(0, 162, 255)
 SubTitleSeeds.TextSize = 8
 SubTitleSeeds.Parent = AutoContainer
 
--- รายชื่อเมล็ดพันธุ์ (ภาษาอังกฤษแบบติดกันไม่มีเว้นวรรค)
+-- รายชื่อเมล็ดพันธุ์ (ภาษาอังกฤษแบบติดกัน ไม่มีเว้นวรรค)
 local seedList = {
     {key = "Carrot", label = "Carrot", itemName = "Carrot"},
     {key = "Miki", label = "Miki", itemName = "Miki"},
